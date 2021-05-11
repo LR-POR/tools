@@ -2,20 +2,14 @@
 # -*- coding: utf-8 -*-
 
 from nltk import FeatStruct as fs
-import re 
-
 """
 This module shows how to use unification to detect errors in a lexical resource or treebank,
 comparing the two resources against one another.
-
 Sketch of the algorithm:
-
 TODO: create class UD_BosqueTreebank with method tagged_sents etc.
 (e.g. subclass of nltk.corpus.CorpusReader)
 TODO: create Python dictionary from MorphoBr, e.g.
 morpho={'baratas':["barato+A+F+PL","barata+N+F+PL","baratar+V+PRS+2+SG"], ...}
-
-
 treebank=UD_BosqueTreebank("pt_bosque-ud-*.conllu")
 sentences=treebank.tagged_sents()
 for sentence in sentences:
@@ -34,10 +28,8 @@ pt_bosque-ud-train.conllu-# text = «É uma obra que fala de fé e eu espero que
 pt_bosque-ud-train.conllu-# sent_id = CF733-3
 pt_bosque-ud-train.conllu-# source = CETENFolha n=733 cad=Ilustrada sec=nd sem=94b
 pt_bosque-ud-train.conllu-# id = 3072
-
 pt_bosque-ud-train.conllu-27	palavras	palavra	NOUN	_	Gender=Fem|Number=Plur	25	nmod	_	_
 pt_bosque-ud-train.conllu:28	simples	simples	ADJ	_	Gender=Masc|Number=Plur	27	amod	_	_
-
 """
 "underspecified entry in MorphoBr"
 ENTRY=fs("[lemma='simples',form='simples', cat='A']")
@@ -55,9 +47,10 @@ TOKEN=fs("[lemma='simples',form='simples', cat='A',gend='f', num='pl']")
 ERROR=fs("[lemma='simpls',form='simpls', cat='A',gend='f', num='pl']")
 
 def check(token_fst,entries):
-    """Return the list of conflicting attribute-value pairs of two feature structures.
-    If the two structures unify, return the empty list.
-    Otherwise return the inconsistencies collected by means of the function find_error."""
+    """Return the list of conflicting attribute-value pairs between a treebank
+    feature structure for a token and a list of dictionary entries for this token.
+    If the structures unify, return the empty list. Otherwise return the inconsistencies
+    collected by means of the function find_error."""
 
     errors=[]
     for entry in entries:
@@ -73,46 +66,8 @@ def bosque_to_fst(token="simples simples ADJ Gender=Fem|Number=Plur"):
     return TOKEN
 
 def morphobr_to_fst(token="simples  simples+A+F+PL"):
-    d = []
-    ls = re.split(r"[ \+]",token)
-    d.append([('form',ls[0]),('lemma',ls[1])])
-    for f in ls[2:]:
-        if f == 'A' or f == 'ADV' or f == 'N' or f == 'V':
-            d.append(('cat',f))
-        elif f == 'F' or f == 'M':
-            d.append(('gend',f))
-        elif f == 'SG' or f == 'PL':
-            d.append(('num',f))
-        elif f == 'DIM' or f == 'AUG' or f == 'SUPER':
-            d.append('deg',f)
-        elif f == 'NEG':
-            d.append(('neg',f))
-        elif f == 'INF' or f == 'GRD':
-            d.append(('verbform',f))
-        elif f == 'PTPST':
-            d+[('verbform','PART'),('tense','PAST')]
-        elif f == 'PRS':
-            d+[('mood','IND'),('tense','PRES')]
-        elif f == 'IMPF':
-            d+[('mood','IND'),('tense','IMP')]
-        elif f == 'PRF':
-            d+[('mood','IND'),('tense','PAST')]
-        elif f == 'FUT':
-            d+[('mood','IND'),('tense','FUT')]
-        elif f == 'PQP':
-            d+[('mood','IND'),('tense','PQP')]
-        elif f == 'SBJR':
-            d+[('mood','SUB'),('tense','PRES')]
-        elif f == 'SBJP':
-            d+[('mood','SUB'),('tense','IMP')]
-        elif f == 'SBJF':
-            d+[('mood','SUB'),('tense','FUT')]
-        elif f == 'IMP':
-            d+[('mood','IMP')]
-        elif f == 'COND':
-            d+[('mood','COD')]
-        
-    return fs(dict(d))
+    """TODO code to be implemented"""
+    return ENTRY
 
 def convert(token,resource):
     if resource == "bosque":
@@ -154,6 +109,4 @@ def demo():
     print "\n%s\n" % ("showing why unification failed")
     ENTRIES.pop(0)
     check(TOKEN, ENTRIES)
-
-        
 
