@@ -57,9 +57,8 @@ def check(token_fst,entries):
 			return
 		else:
 			errors.append(entry)
-	if errors:
-		for error in errors:
-			find_error(error,token_fst)
+	for error in errors:
+		find_error(error,token_fst)
 
 def bosque_to_fst(token="simples simples ADJ Gender=Fem|Number=Plur"):
     """TODO code to be implemented"""
