@@ -72,8 +72,46 @@ def bosque_to_fst(token="simples simples ADJ Gender=Fem|Number=Plur"):
     return TOKEN
 
 def morphobr_to_fst(token="simples  simples+A+F+PL"):
-    """TODO code to be implemented"""
-    return ENTRY
+    d = []
+    ls = re.split(r"[ \+]",token)
+    d.append([('form',ls[0]),('lemma',ls[1])])
+    for f in ls[2:]:
+        if f == 'A' or f == 'ADV' or f == 'N' or f == 'V':
+            d.append(('cat',f))
+        elif f == 'F' or f == 'M':
+            d.append(('gend',f))
+        elif f == 'SG' or f == 'PL':
+            d.append(('num',f))
+        elif f == 'DIM' or f == 'AUG' or f == 'SUPER':
+            d.append('deg',f)
+        elif f == 'NEG':
+            d.append(('neg',f))
+        elif f == 'INF' or f == 'GRD':
+            d.append(('verbform',f))
+        elif f == 'PTPST':
+            d+[('verbform','PART'),('tense','PAST')]
+        elif f == 'PRS':
+            d+[('mood','IND'),('tense','PRES')]
+        elif f == 'IMPF':
+            d+[('mood','IND'),('tense','IMP')]
+        elif f == 'PRF':
+            d+[('mood','IND'),('tense','PAST')]
+        elif f == 'FUT':
+            d+[('mood','IND'),('tense','FUT')]
+        elif f == 'PQP':
+            d+[('mood','IND'),('tense','PQP')]
+        elif f == 'SBJR':
+            d+[('mood','SUB'),('tense','PRES')]
+        elif f == 'SBJP':
+            d+[('mood','SUB'),('tense','IMP')]
+        elif f == 'SBJF':
+            d+[('mood','SUB'),('tense','FUT')]
+        elif f == 'IMP':
+            d+[('mood','IMP')]
+        elif f == 'COND':
+            d+[('mood','COD')]
+        
+    return fs(dict(d))
 
 def convert(token,resource):
     if resource == "bosque":
