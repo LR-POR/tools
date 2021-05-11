@@ -21,7 +21,9 @@ for sentence in sentences:
         token_fst=convert(tag,bosque) # e.g. convert("simples+ADJ+Gender=Fem|Number=Plur",bosque)
         entries=morphobr.get(word)
         if entries:
-            check(token_fst,[convert(e) for e in entries])
+            errors=check(token_fst,[convert(e) for e in entries])
+            if errors:
+                pprint(errors)
         else:
             print "not found in dict"
             
@@ -51,14 +53,18 @@ TOKEN=fs("[lemma='simples',form='simples', cat='A',gend='f', num='pl']")
 ERROR=fs("[lemma='simpls',form='simpls', cat='A',gend='f', num='pl']")
 
 def check(token_fst,entries):
-	errors=[]
-	for entry in entries:
-		if entry.unify(token_fst):
-			return
-		else:
-			errors.append(entry)
-	for error in errors:
-		find_error(error,token_fst)
+    """Return the list of conflicting attribute-value pairs of two feature structures.
+    If the two structures unify, return the empty list.
+    Otherwise return the inconsistencies collected by means of the function find_error."""
+
+    errors=[]
+    for entry in entries:
+	if entry.unify(token_fst):
+            return []
+	else:
+	    errors.append(entry)
+    return [find_error(error,token_fst) for error in errors]
+	    
 
 def bosque_to_fst(token="simples simples ADJ Gender=Fem|Number=Plur"):
     """TODO code to be implemented"""
@@ -76,11 +82,18 @@ def convert(token,resource):
        
 def find_error(fs1,fs2):
 	attributes=set(fs1.iterkeys()).union(fs2.iterkeys())
+	errors=[]
 	for k in attributes:
 		v1=fs1.get(k)
 		v2=fs2.get(k)
 		if v1 and v2 and not v1 == v2:
-			print "values '%s' and '%s' of '%s' don't match" % (v1, v2,k)
+                    errors.append((k,v1,v2))
+        return errors
+
+def pprint_errors(errors):
+    for list_of_errors in errors:
+        for error in list_of_errors:
+            print "attribute '%s': values '%s' and '%s' don't match" % error
 		
 def check_unification(fs1,fs2):
     msg="feature structures%s unify"
