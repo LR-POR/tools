@@ -8,14 +8,22 @@ comparing the two resources against one another.
 
 Sketch of the algorithm:
 
-for sentence in treebank:
-    for word in sentence:
-        token=sentence.get(word)
+TODO: create class UD_BosqueTreebank with method tagged_sents etc.
+(e.g. subclass of nltk.corpus.CorpusReader)
+TODO: create Python dictionary from MorphoBr, e.g.
+morpho={'baratas':["barato+A+F+PL","barata+N+F+PL","baratar+V+PRS+2+SG"], ...}
+
+
+treebank=UD_BosqueTreebank("pt_bosque-ud-*.conllu")
+sentences=treebank.tagged_sents()
+for sentence in sentences:
+    for word,tag in sentence:
+        token_fst=convert(tag,bosque) # e.g. convert("simples+ADJ+Gender=Fem|Number=Plur",bosque)
         entries=morphobr.get(word)
-        for entry in entries:
-            e=convert(entry,morpho)
-            t=convert(entry,bosque)
-            check_unification(t, e)
+        if entries:
+            check(token_fst,[convert(e) for e in entries])
+        else:
+            print "not found in dict"
             
 Example sentence:            
 pt_bosque-ud-train.conllu-# text = «É uma obra que fala de fé e eu espero que possibilite ao público uma compreensão direta do gospel, uma música de palavras simples e profundas.»
@@ -29,6 +37,12 @@ pt_bosque-ud-train.conllu:28	simples	simples	ADJ	_	Gender=Masc|Number=Plur	27	am
 """
 "underspecified entry in MorphoBr"
 ENTRY=fs("[lemma='simples',form='simples', cat='A']")
+ENTRY2=fs("[lemma='simples',form='simples', cat='N']")
+ENTRY3=fs("[lemma='simpls',form='simples', cat='N']")
+ENTRY4=fs("[lemma='simpls',form='simples', cat='X']")
+ENTRY5=fs("[lemma='simples',form='simpls', cat='Y']")
+
+ENTRIES=[ENTRY, ENTRY2, ENTRY3, ENTRY4, ENTRY5]
 
 "(corrected) analysis of Bosque"
 TOKEN=fs("[lemma='simples',form='simples', cat='A',gend='f', num='pl']")
@@ -36,12 +50,23 @@ TOKEN=fs("[lemma='simples',form='simples', cat='A',gend='f', num='pl']")
 "bogus incorrect analysis"
 ERROR=fs("[lemma='simpls',form='simpls', cat='A',gend='f', num='pl']")
 
+def check(token_fst,entries):
+	errors=[]
+	for entry in entries:
+		if entry.unify(token_fst):
+			return
+		else:
+			errors.append(entry)
+	if errors:
+		for error in errors:
+			find_error(error,token_fst)
+
 def bosque_to_fst(token="simples simples ADJ Gender=Fem|Number=Plur"):
-    """code to be implemented"""
+    """TODO code to be implemented"""
     return TOKEN
 
 def morphobr_to_fst(token="simples  simples+A+F+PL"):
-    """code to be implemented"""
+    """TODO code to be implemented"""
     return ENTRY
 
 def convert(token,resource):
@@ -72,6 +97,11 @@ def demo():
     check_unification(TOKEN, ENTRY)
     print "\n%s\n\n%s\n" % (ERROR,ENTRY)
     check_unification(ERROR, ENTRY)
+    print "\n%s\n" % ("in case of unification nothing is printed")
+    check(TOKEN, ENTRIES)
+    print "\n%s\n" % ("showing why unification failed")
+    ENTRIES.pop(0)
+    check(TOKEN, ENTRIES)
 
         
 
