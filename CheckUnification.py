@@ -53,9 +53,10 @@ TOKEN=fs("[lemma='simples',form='simples', cat='A',gend='f', num='pl']")
 ERROR=fs("[lemma='simpls',form='simpls', cat='A',gend='f', num='pl']")
 
 def check(token_fst,entries):
-    """Return the list of conflicting attribute-value pairs of two feature structures.
-    If the two structures unify, return the empty list.
-    Otherwise return the inconsistencies collected by means of the function find_error."""
+    """Return the list of conflicting attribute-value pairs between a treebank
+    feature structure for a token and a list of dictionary entries for this token.
+    If the structures unify, return the empty list. Otherwise return the inconsistencies
+    collected by means of the function find_error."""
 
     errors=[]
     for entry in entries:
