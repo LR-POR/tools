@@ -4,9 +4,17 @@
 from nltk import FeatStruct as fs
 import re
 import json
+import conllu
 
 with open('morphobr_to_bosque.json') as f:
     morphobr_to_bosque = json.load(f)
+
+file = open("../dhbb-nlp/udp-mini/12144.conllu", "r", encoding="utf-8")
+data_file = file.read()
+for sent in conllu.parse(data_file):
+    for token in sent:
+        print(bosque_to_fst(token["form"],token["lemma"],token["upos"],token["feats"]))
+
 
 """
 This module shows how to use unification to detect errors in a lexical resource or treebank,
@@ -58,6 +66,7 @@ TOKEN=fs("[lemma='simples',form='simples', cat='A',gend='f', num='pl']")
 "bogus incorrect analysis"
 ERROR=fs("[lemma='simpls',form='simpls', cat='A',gend='f', num='pl']")
 
+
 def check(token_fst,entries):
     """Return the list of conflicting attribute-value pairs between a treebank
     feature structure for a token and a list of dictionary entries for this token.
@@ -73,14 +82,12 @@ def check(token_fst,entries):
     return [find_error(error,token_fst) for error in errors]
 	    
 
-def bosque_to_fst(token = "simples",lemma = "simples",cat = "ADJ",feats = "Gender=Fem|Number=Plur"):
-    ls = re.split(r"[\|]",feats)
+def bosque_to_fst(token,lemma,cat,feats):
     d =[('Form',token),('Lemma',lemma),('Cat',cat)]
-    for l in ls:
-        f = re.split(r"[\=]",l)
-        d.append((f[0],f[1]))
+    if type(feats) is dict:
+        for feat in feats.keys():
+            d.append((feat,feats[feat]))
     return fs(dict(d))
-
 
 def morphobr_to_fst(token="simples simples+A+F+PL"):
     ls = re.split(r"[ \+]",token)
@@ -111,25 +118,25 @@ def find_error(fs1,fs2):
 def pprint_errors(errors):
     for list_of_errors in errors:
         for error in list_of_errors:
-            print "attribute '%s': values '%s' and '%s' don't match" % error
+            print ("attribute '%s': values '%s' and '%s' don't match" % error)
 		
 def check_unification(fs1,fs2):
     msg="feature structures%s unify"
     if fs1.unify(fs2):
-         print msg % ""
+         print (msg % "")
     else:
-        print msg % " don't"
+        print (msg % " don't")
         find_error(fs1,fs2)
     
 
 def demo():
-    print "%s\n\n%s\n" % (TOKEN,ENTRY)   
+    print ("%s\n\n%s\n" % (TOKEN,ENTRY))
     check_unification(TOKEN, ENTRY)
-    print "\n%s\n\n%s\n" % (ERROR,ENTRY)
+    print ("\n%s\n\n%s\n" % (ERROR,ENTRY))
     check_unification(ERROR, ENTRY)
-    print "\n%s\n" % ("in case of unification nothing is printed")
+    print ("\n%s\n" % ("in case of unification nothing is printed"))
     check(TOKEN, ENTRIES)
-    print "\n%s\n" % ("showing why unification failed")
+    print ("\n%s\n" % ("showing why unification failed"))
     ENTRIES.pop(0)
     check(TOKEN, ENTRIES)
 
