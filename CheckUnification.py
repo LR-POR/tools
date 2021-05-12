@@ -2,6 +2,8 @@
 # -*- coding: utf-8 -*-
 
 from nltk import FeatStruct as fs
+import re
+
 """
 This module shows how to use unification to detect errors in a lexical resource or treebank,
 comparing the two resources against one another.
@@ -60,25 +62,49 @@ def check(token_fst,entries):
 
     errors=[]
     for entry in entries:
-	if entry.unify(token_fst):
-            return []
-	else:
-	    errors.append(entry)
+        if entry.unify(token_fst):
+                return []
+        else:
+            errors.append(entry)
     return [find_error(error,token_fst) for error in errors]
 	    
 
 def bosque_to_fst(token="simples simples ADJ Gender=Fem|Number=Plur"):
-    """TODO code to be implemented"""
-    return TOKEN
+    ls = re.split(r"[ \|]",token)
+    d =[('form',ls[0]),('lemma',ls[1])]
+    for l in ls[2:]:
+        f = re.split(r"[\=]",l)
+        if f[0] == "ADVERB":
+            d.append(('cat','ADV'))
+        elif f[0] == "AUX" or f == "VERB":
+            d.append(('cat','V'))
+        elif f[0] == "NOUN":
+            d.append(('cat','N')) 
+        elif f[0] == "ADJ":
+            d.append(('cat','A'))
+        elif f[1] == "Fem":
+            d.append(('gend','F'))
+        elif f[1] == "Masc":
+            d.append(('gend','M'))
+        elif f[1] == "Plur":
+            d.append(('num','PL'))
+        elif f[1] == "Sing":
+            d.append(('num','SG')) 
+        elif f[0] == "VerbForm":
+            d.append(('verform',f[1]))
+        elif f[0] == "Mood":
+            d.append(('mood',f[1]))               
+        elif f[0] == "Tense":
+            d.append(('tense',f[1]))
+        elif f[0] == "Voice":
+            d.append('voice',f[1])
+    return fs(dict(d))
 
-def morphobr_to_fst(token="simples  simples+A+F+PL"):
-    d = []
+def morphobr_to_fst(token="simples simples+A+F+PL"):
     ls = re.split(r"[ \+]",token)
-    d.append([('form',ls[0]),('lemma',ls[1])])
-    for f in ls[2:]:
-        if f == 'A' or f == 'ADV' or f == 'N' or f == 'V':
-            d.append(('cat',f))
-        elif f == 'F' or f == 'M':
+    d = [('form',ls[0]),('lemma',ls[1]),('cat',ls[2])]
+    for f in ls[3:]:
+        if f[0] == 'F' or f == 'M':
             d.append(('gend',f))
         elif f == 'SG' or f == 'PL':
             d.append(('num',f))
@@ -89,28 +115,27 @@ def morphobr_to_fst(token="simples  simples+A+F+PL"):
         elif f == 'INF' or f == 'GRD':
             d.append(('verbform',f))
         elif f == 'PTPST':
-            d+[('verbform','PART'),('tense','PAST')]
+            d+[('verbform','Part'),('tense','Past')]
         elif f == 'PRS':
-            d+[('mood','IND'),('tense','PRES')]
+            d+[('mood','Ind'),('tense','Pres')]
         elif f == 'IMPF':
-            d+[('mood','IND'),('tense','IMP')]
+            d+[('mood','Ind'),('tense','Imp')]
         elif f == 'PRF':
-            d+[('mood','IND'),('tense','PAST')]
+            d+[('mood','Ind'),('tense','Past')]
         elif f == 'FUT':
-            d+[('mood','IND'),('tense','FUT')]
+            d+[('mood','Ind'),('tense','Fut')]
         elif f == 'PQP':
-            d+[('mood','IND'),('tense','PQP')]
+            d+[('mood','Ind'),('tense','Pqp')]
         elif f == 'SBJR':
-            d+[('mood','SUB'),('tense','PRES')]
+            d+[('mood','Sub'),('tense','Pres')]
         elif f == 'SBJP':
-            d+[('mood','SUB'),('tense','IMP')]
+            d+[('mood','Sub'),('tense','Imp')]
         elif f == 'SBJF':
-            d+[('mood','SUB'),('tense','FUT')]
+            d+[('mood','Sub'),('tense','Fut')]
         elif f == 'IMP':
-            d+[('mood','IMP')]
+            d+[('mood','Imp')]
         elif f == 'COND':
-            d+[('mood','COD')]
-        
+            d+[('mood','Cod')]   
     return fs(dict(d))
 
 def convert(token,resource):
