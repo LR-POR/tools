@@ -55,13 +55,12 @@ def check(token_fst,entries):
     list. Otherwise return the inconsistencies collected by means of
     the function find_error.
     """
-
     errors=[]
     for entry in entries:
-    if entry.unify(token_fst):
+        if entry.unify(token_fst):
             return []
-    else:
-        errors.append(entry)
+        else:
+            errors.append(entry)
     return [find_error(error,token_fst) for error in errors]
 
 def bosque_to_fst(token="simples simples ADJ Gender=Fem|Number=Plur"):
