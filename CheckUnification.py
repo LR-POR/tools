@@ -2,13 +2,33 @@
 # -*- coding: utf-8 -*-
 
 from nltk import FeatStruct as fs
+import re
+import json
+import conllu
+import sys
+import MorphobrToBosque
+
+with open('morphobr_to_bosque.json') as f:
+    morphobr_to_bosque = json.load(f)
+
+file = open(sys.argv[1], "r", encoding="utf-8")
+data_file = file.read()
+for sent in conllu.parse(data_file):
+    for token in sent:
+        print(bosque_to_fst(token["form"],token["lemma"],token["upos"],token["feats"]))
+
 """
-This module shows how to use unification to detect errors in a lexical resource or treebank,
-comparing the two resources against one another.
+
+This module shows how to use unification to detect errors in a lexical
+resource or treebank, comparing the two resources against one another.
+
 Sketch of the algorithm:
+
 TODO: create class UD_BosqueTreebank with method tagged_sents etc.
 (e.g. subclass of nltk.corpus.CorpusReader)
+
 TODO: create Python dictionary from MorphoBr, e.g.
+
 morpho={'baratas':["barato+A+F+PL","barata+N+F+PL","baratar+V+PRS+2+SG"], ...}
 treebank=UD_BosqueTreebank("pt_bosque-ud-*.conllu")
 sentences=treebank.tagged_sents()
@@ -34,6 +54,8 @@ pt_bosque-ud-train.conllu-27	palavras	palavra	NOUN	_	Gender=Fem|Number=Plur	25	n
 pt_bosque-ud-train.conllu:28	simples	simples	ADJ	_	Gender=Masc|Number=Plur	27	amod	_	_
 """
 "underspecified entry in MorphoBr"
+
+
 ENTRY=fs("[lemma='simples',form='simples', cat='A']")
 ENTRY2=fs("[lemma='simples',form='simples', cat='N']")
 ENTRY3=fs("[lemma='simpls',form='simples', cat='N']")
@@ -47,6 +69,7 @@ TOKEN=fs("[lemma='simples',form='simples', cat='A',gend='f', num='pl']")
 
 "bogus incorrect analysis"
 ERROR=fs("[lemma='simpls',form='simpls', cat='A',gend='f', num='pl']")
+
 
 def check(token_fst,entries):
     """Return the list of conflicting attribute-value pairs between a
@@ -63,13 +86,22 @@ def check(token_fst,entries):
             errors.append(entry)
     return [find_error(error,token_fst) for error in errors]
 
-def bosque_to_fst(token="simples simples ADJ Gender=Fem|Number=Plur"):
-    """TODO code to be implemented"""
-    return TOKEN
+def bosque_to_fst(token,lemma,cat,feats):
+    d =[('Form',token),('Lemma',lemma),('Cat',cat)]
+    if type(feats) is dict:
+        for feat in feats.keys():
+            d.append((feat,feats[feat]))
+    return fs(dict(d))
 
-def morphobr_to_fst(token="simples  simples+A+F+PL"):
-    """TODO code to be implemented"""
-    return ENTRY
+def morphobr_to_fst(token="simples simples+A+F+PL"):
+    ls = re.split(r"[ \+]",token)
+    d = [('Form',ls[0]),('Lemma',ls[1])]
+    for l in ls[2:]:
+        ms = morphobr_to_bosque.get(l)
+        for m in ms:
+            f = re.split(r"[\=]",m)
+            d.append((f[0],f[1]))
+    return fs(dict(d))
 
 def convert(token,resource):
     if resource == "bosque":
@@ -90,24 +122,23 @@ def find_error(fs1,fs2):
 def pprint_errors(errors):
     for list_of_errors in errors:
         for error in list_of_errors:
-            print "attribute '%s': values '%s' and '%s' don't match" % error
+            print ("attribute '%s': values '%s' and '%s' don't match" % error)
 
 def check_unification(fs1,fs2):
     msg="feature structures%s unify"
     if fs1.unify(fs2):
-         print msg % ""
+         print (msg % "")
     else:
-        print msg % " don't"
+        print (msg % " don't")
         find_error(fs1,fs2)
 
 def demo():
-    print "%s\n\n%s\n" % (TOKEN,ENTRY)
+    print ("%s\n\n%s\n" % (TOKEN,ENTRY))
     check_unification(TOKEN, ENTRY)
-    print "\n%s\n\n%s\n" % (ERROR,ENTRY)
+    print ("\n%s\n\n%s\n" % (ERROR,ENTRY))
     check_unification(ERROR, ENTRY)
-    print "\n%s\n" % ("in case of unification nothing is printed")
+    print ("\n%s\n" % ("in case of unification nothing is printed"))
     check(TOKEN, ENTRIES)
-    print "\n%s\n" % ("showing why unification failed")
+    print ("\n%s\n" % ("showing why unification failed"))
     ENTRIES.pop(0)
     check(TOKEN, ENTRIES)
-
