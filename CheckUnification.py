@@ -11,11 +11,6 @@ import MorphobrToBosque
 with open('morphobr_to_bosque.json') as f:
     morphobr_to_bosque = json.load(f)
 
-file = open(sys.argv[1], "r", encoding="utf-8")
-data_file = file.read()
-for sent in conllu.parse(data_file):
-    for token in sent:
-        print(bosque_to_fst(token["form"],token["lemma"],token["upos"],token["feats"]))
 
 """
 
@@ -142,3 +137,9 @@ def demo():
     print ("\n%s\n" % ("showing why unification failed"))
     ENTRIES.pop(0)
     check(TOKEN, ENTRIES)
+
+file = open("/home/ana/dhbb/dhbb-nlp/udp-mini/161.conllu", "r", encoding="utf-8")
+data_file = file.read()
+for sent in conllu.parse(data_file):
+    for token in sent:
+        print(bosque_to_fst(token["form"],token["lemma"],token["upos"],token["feats"]))
