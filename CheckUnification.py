@@ -15,9 +15,10 @@ with open('morphobr_to_bosque.json') as f:
 def check(token_fst,entries):
     """Return the list of conflicting attribute-value pairs between a
     treebank feature structure for a token and a list of dictionary
-    entries for this token.  If the structures unify, return the empty
-    list. Otherwise return the inconsistencies collected by means of
-    the function find_error.
+    entries for this token. If the structures unify with at least one
+    entry, return the empty list. Otherwise return the inconsistencies
+    collected by means of the function find_error.
+
     """
     errors=[]
     for entry in entries:
@@ -27,15 +28,16 @@ def check(token_fst,entries):
             errors.append(entry)
     return [find_error(error,token_fst) for error in errors]
 
-def bosque_to_fst(token,lemma,cat,feats):
+
+def token_to_fst(token,lemma,cat,feats):
     d =[('Form',token),('Lemma',lemma),('Cat',cat)]
     if type(feats) is dict:
         for feat in feats.keys():
             d.append((feat,feats[feat]))
     return fs(dict(d))
 
-def morphobr_to_fst(token="simples simples+A+F+PL"):
-    ls = re.split(r"[ \+]",token)
+def entry_to_fst(entry="simples simples+A+F+PL"):
+    ls = re.split(r"[ \+]",entry)
     d = [('Form',ls[0]),('Lemma',ls[1])]
     for l in ls[2:]:
         ms = morphobr_to_bosque.get(l)
@@ -44,11 +46,6 @@ def morphobr_to_fst(token="simples simples+A+F+PL"):
             d.append((f[0],f[1]))
     return fs(dict(d))
 
-def convert(token,resource):
-    if resource == "bosque":
-       bosque_to_fst(token)
-    if resource == "morpho":
-       morphobr_to_fst(token)
 
 def find_error(fs1,fs2):
     attributes=set(fs1.iterkeys()).union(fs2.iterkeys())
@@ -65,6 +62,9 @@ def pprint_errors(errors):
         for error in list_of_errors:
             print ("attribute '%s': values '%s' and '%s' don't match" % error)
 
+
+# code for demo            
+            
 def check_unification(fs1,fs2):
     msg="feature structures%s unify"
     if fs1.unify(fs2):
@@ -83,9 +83,22 @@ def demo():
     print ("\n%s\n" % ("showing why unification failed"))
     ENTRIES.pop(0)
     check(TOKEN, ENTRIES)
-
+    
 
 with open(sys.argv[1], "r", encoding="utf-8") as file:
     for tks in conllu.parse_incr(file):
         for token in tks:
-            print(bosque_to_fst(token["form"],token["lemma"],token["upos"],token["feats"]))
+            print("")
+            print(token_to_fst(token["form"],token["lemma"],token["upos"],token["feats"]))
+
+
+"""
+
+TODO:
+
+ - [ ] ler feature structures do morphobr de um json (preparado na lib
+       cpdoc/test em Haskell)
+ - [ ] comparacao token vs entradas do morphobr com mesma 'form'
+ - [ ] saida das diferencas, formatar relatorio
+
+"""            
