@@ -13,6 +13,7 @@ with open('morphobr_to_bosque.json') as f:
 
 
 """
+
 This module shows how to use unification to detect errors in a lexical
 resource or treebank, comparing the two resources against one another.
 
@@ -141,4 +142,5 @@ file = open(sys.argv[1], "r", encoding="utf-8")
 data_file = file.read()
 for sent in conllu.parse(data_file):
     for token in sent:
+        print("")
         print(bosque_to_fst(token["form"],token["lemma"],token["upos"],token["feats"]))
