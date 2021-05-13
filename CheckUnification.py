@@ -1,68 +1,15 @@
-#! /usr/bin/env python2.7
 # -*- coding: utf-8 -*-
 
 from nltk import FeatStruct as fs
 import re
 import json
 import conllu
+from io import open
+from conllu import parse_incr
 import sys
-import MorphobrToBosque
 
 with open('morphobr_to_bosque.json') as f:
     morphobr_to_bosque = json.load(f)
-
-
-"""
-This module shows how to use unification to detect errors in a lexical
-resource or treebank, comparing the two resources against one another.
-
-Sketch of the algorithm:
-
-TODO: create class UD_BosqueTreebank with method tagged_sents etc.
-(e.g. subclass of nltk.corpus.CorpusReader)
-
-TODO: create Python dictionary from MorphoBr, e.g.
-
-morpho={'baratas':["barato+A+F+PL","barata+N+F+PL","baratar+V+PRS+2+SG"], ...}
-treebank=UD_BosqueTreebank("pt_bosque-ud-*.conllu")
-sentences=treebank.tagged_sents()
-
-for sentence in sentences:
-    for word,tag in sentence:
-        token_fst=convert(tag,bosque) # e.g. convert("simples+ADJ+Gender=Fem|Number=Plur",bosque)
-        entries=morphobr.get(word)
-        if entries:
-            errors=check(token_fst,[convert(e) for e in entries])
-            if errors:
-                pprint(errors)
-        else:
-            print "not found in dict"
-
-Example sentence:
-
-pt_bosque-ud-train.conllu-# text = «É uma obra que fala de fé e eu espero que possibilite ao público uma compreensão direta do gospel, uma música de palavras simples e profundas.»
-pt_bosque-ud-train.conllu-# sent_id = CF733-3
-pt_bosque-ud-train.conllu-# source = CETENFolha n=733 cad=Ilustrada sec=nd sem=94b
-pt_bosque-ud-train.conllu-# id = 3072
-pt_bosque-ud-train.conllu-27	palavras	palavra	NOUN	_	Gender=Fem|Number=Plur	25	nmod	_	_
-pt_bosque-ud-train.conllu:28	simples	simples	ADJ	_	Gender=Masc|Number=Plur	27	amod	_	_
-"""
-"underspecified entry in MorphoBr"
-
-
-ENTRY=fs("[lemma='simples',form='simples', cat='A']")
-ENTRY2=fs("[lemma='simples',form='simples', cat='N']")
-ENTRY3=fs("[lemma='simpls',form='simples', cat='N']")
-ENTRY4=fs("[lemma='simpls',form='simples', cat='X']")
-ENTRY5=fs("[lemma='simples',form='simpls', cat='Y']")
-
-ENTRIES=[ENTRY, ENTRY2, ENTRY3, ENTRY4, ENTRY5]
-
-"(corrected) analysis of Bosque"
-TOKEN=fs("[lemma='simples',form='simples', cat='A',gend='f', num='pl']")
-
-"bogus incorrect analysis"
-ERROR=fs("[lemma='simpls',form='simpls', cat='A',gend='f', num='pl']")
 
 
 def check(token_fst,entries):
@@ -137,8 +84,8 @@ def demo():
     ENTRIES.pop(0)
     check(TOKEN, ENTRIES)
 
-file = open(sys.argv[1], "r", encoding="utf-8")
-data_file = file.read()
-for sent in conllu.parse(data_file):
-    for token in sent:
-        print(bosque_to_fst(token["form"],token["lemma"],token["upos"],token["feats"]))
+
+with open(sys.argv[1], "r", encoding="utf-8") as file:
+    for tks in conllu.parse_incr(file):
+        for token in tks:
+            print(bosque_to_fst(token["form"],token["lemma"],token["upos"],token["feats"]))
