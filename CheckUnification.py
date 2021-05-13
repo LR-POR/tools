@@ -12,6 +12,7 @@ TODO: create Python dictionary from MorphoBr, e.g.
 morpho={'baratas':["barato+A+F+PL","barata+N+F+PL","baratar+V+PRS+2+SG"], ...}
 treebank=UD_BosqueTreebank("pt_bosque-ud-*.conllu")
 sentences=treebank.tagged_sents()
+
 for sentence in sentences:
     for word,tag in sentence:
         token_fst=convert(tag,bosque) # e.g. convert("simples+ADJ+Gender=Fem|Number=Plur",bosque)
@@ -22,8 +23,9 @@ for sentence in sentences:
                 pprint(errors)
         else:
             print "not found in dict"
-            
-Example sentence:            
+
+Example sentence:
+
 pt_bosque-ud-train.conllu-# text = «É uma obra que fala de fé e eu espero que possibilite ao público uma compreensão direta do gospel, uma música de palavras simples e profundas.»
 pt_bosque-ud-train.conllu-# sent_id = CF733-3
 pt_bosque-ud-train.conllu-# source = CETENFolha n=733 cad=Ilustrada sec=nd sem=94b
@@ -47,19 +49,20 @@ TOKEN=fs("[lemma='simples',form='simples', cat='A',gend='f', num='pl']")
 ERROR=fs("[lemma='simpls',form='simpls', cat='A',gend='f', num='pl']")
 
 def check(token_fst,entries):
-    """Return the list of conflicting attribute-value pairs between a treebank
-    feature structure for a token and a list of dictionary entries for this token.
-    If the structures unify, return the empty list. Otherwise return the inconsistencies
-    collected by means of the function find_error."""
+    """Return the list of conflicting attribute-value pairs between a
+    treebank feature structure for a token and a list of dictionary
+    entries for this token.  If the structures unify, return the empty
+    list. Otherwise return the inconsistencies collected by means of
+    the function find_error.
+    """
 
     errors=[]
     for entry in entries:
-	if entry.unify(token_fst):
+    if entry.unify(token_fst):
             return []
-	else:
-	    errors.append(entry)
+    else:
+        errors.append(entry)
     return [find_error(error,token_fst) for error in errors]
-	    
 
 def bosque_to_fst(token="simples simples ADJ Gender=Fem|Number=Plur"):
     """TODO code to be implemented"""
@@ -74,14 +77,14 @@ def convert(token,resource):
        bosque_to_fst(token)
     if resource == "morpho":
        morphobr_to_fst(token)
-       
+
 def find_error(fs1,fs2):
-	attributes=set(fs1.iterkeys()).union(fs2.iterkeys())
-	errors=[]
-	for k in attributes:
-		v1=fs1.get(k)
-		v2=fs2.get(k)
-		if v1 and v2 and not v1 == v2:
+    attributes=set(fs1.iterkeys()).union(fs2.iterkeys())
+    errors=[]
+    for k in attributes:
+        v1=fs1.get(k)
+        v2=fs2.get(k)
+        if v1 and v2 and not v1 == v2:
                     errors.append((k,v1,v2))
         return errors
 
@@ -89,7 +92,7 @@ def pprint_errors(errors):
     for list_of_errors in errors:
         for error in list_of_errors:
             print "attribute '%s': values '%s' and '%s' don't match" % error
-		
+
 def check_unification(fs1,fs2):
     msg="feature structures%s unify"
     if fs1.unify(fs2):
@@ -97,10 +100,9 @@ def check_unification(fs1,fs2):
     else:
         print msg % " don't"
         find_error(fs1,fs2)
-    
 
 def demo():
-    print "%s\n\n%s\n" % (TOKEN,ENTRY)   
+    print "%s\n\n%s\n" % (TOKEN,ENTRY)
     check_unification(TOKEN, ENTRY)
     print "\n%s\n\n%s\n" % (ERROR,ENTRY)
     check_unification(ERROR, ENTRY)
