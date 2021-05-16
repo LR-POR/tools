@@ -27,19 +27,6 @@ def build_entry_dict_list(entries):
         entry_dict["feats"]=parts[3:]
         entry_dict_list.append(entry_dict)
     return entry_dict_list
-    
-
-def build_dict(items,key,value):
-    """build a dictionary from items mapping key to value, 
-    where value is a list"""
-    new_dict={}
-    for item in items:
-        if new_dict.get(key):
-           new_dict[key].append(value) 
-        else:
-            new_dict[key]=[value]
-    return new_dict
-
 
 def build_lemma_dict(entry_dict_list):
     """build dictionary mapping (lemma,pos) to (form,feats)"""
@@ -83,13 +70,6 @@ def common_feats(feats_lists):
     return list(set_list[0])
 
 def simplify(lemma_dict):
-    """
-    alegre alegre N [['F', 'SG'], ['M', 'SG']]
-alegres alegre N [['F', 'PL'], ['M', 'PL']]
-
-simples [['F', 'PL'], ['F', 'SG'], ['M', 'PL'], ['M', 'SG']]
-"""
-
     for lemma,pos in lemma_dict.keys():
         forms=build_forms_dict(lemma_dict[lemma,pos]) 
         for form in forms.keys():
