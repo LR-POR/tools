@@ -14,8 +14,16 @@ def extract_entries(infile):
         return [line.strip() for line in f.readlines()]
         
 def parse_entry(entry):
-    return sep.split(entry) 
+    return sep.split(entry)
 
+def build_entry_dict(form,lemma,pos,feats):
+    entry_dict={}
+    entry_dict["form"]=form
+    entry_dict["lemma"]=lemma
+    entry_dict["pos"]=pos
+    entry_dict["feats"]=feats
+    return entry_dict
+    
 def build_entry_dict_list(entries):
     entry_dict_list=[]
     for entry in entries:
@@ -69,16 +77,17 @@ def common_feats(feats_lists):
         set_list[0].intersection_update(s)
     return list(set_list[0])
 
-def simplify(lemma_dict):
+def simplify(lemma_dict):  
     for lemma,pos in lemma_dict.keys():
         forms=build_forms_dict(lemma_dict[lemma,pos]) 
         for form in forms.keys():
-            feats=forms[form]
-            if len(feats) > 1:
-                new_feats=common_feats(feats)
+            feats_lists=forms[form]
+            entry="%s\t%s+%s+" % (form,lemma,pos)
+            if len(feats_lists) > 1:
+                feats=common_feats(feats_lists)
             else:
-                new_feats=feats[0]
-            print(form,lemma,pos,new_feats)
+                feats=feats_lists[0]
+            print("%s%s" % (entry,"+".join(feats)))
             
 def main(infile=expanduser("~/scripts/check-tools/mini.txt")):
     entries=extract_entries(infile)
@@ -88,5 +97,9 @@ def main(infile=expanduser("~/scripts/check-tools/mini.txt")):
     
 if __name__ == "__main__":
     import sys
-    main(sys.argv[1])
+    if len(sys.argv) == 1:
+        main()
+    else:
+        for infile in sys.argv[1:]:
+            main(infile)
 
