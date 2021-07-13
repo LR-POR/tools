@@ -16,14 +16,14 @@ import qualified Text.Regex as R
 -- (Regex) no lema, ele é substituído pelo segundo sufixo (String)
 getRegForm :: String -> [(R.Regex,String)] -> [T.Text]
 getRegForm lema (x:xs)
- | fromJust (matchRegex (fst x) lema) = [T.pack $ R.subRegex (fst x) lema (snd x)] ++ getRegForm lema xs
- | otherwise = []getRegForm
+ | (R.matchRegex (fst x) lema) == Nothing = []
+ | otherwise = [T.pack $ R.subRegex (fst x) lema (snd x)] ++ getRegForm lema xs
 getRegForm lema [] = []
 
 -- verifica se a forma é regular, se não for retorna a forma irregular e a regular que 
 -- foi contruída pela regra
 -- rs :: lista com as formas regulares produzidas pela func getRegForm
-sRegular :: T.Text -> T.Text -> T.Text -> [T.Text] -> [[T.Text]]
+isRegular :: T.Text -> T.Text -> T.Text -> [T.Text] -> [[T.Text]]
 isRegular forma lema regra rs 
  | member forma rs = [[]]
  | otherwise = [[forma, regra, lema],[(head rs), regra, lema]]
@@ -33,7 +33,7 @@ isRegular forma lema regra rs
 -- e concatenando a saída
 getIrregs :: [(T.Text,[(T.Text,T.Text)])] -> M.Map T.Text [(R.Regex,String)] -> [[T.Text]]
 getIrregs xs m =
-  concatMap ((\k (x,ys) -> map (aux x k) ys) m) xs
+  concatMap ((\k (x,ys) -> concatMap (aux x k) ys) m) xs
  where 
    aux l m (f,r) = isRegular l r f (getRegForm (T.unpack l) (fromJust (M.lookup r m))) 
 
@@ -51,13 +51,15 @@ lemmaDict path = do
 -- sendo o primeiro uma Regex (expressão regular)
 readRules :: FilePath -> M.Map T.Text [(R.Regex,String)]
 
--- recebe dois paths, um com o diretório dos arquivos a serem verificados e outro onde serão 
--- escritas as formas irregulares
-mkIrregsTab :: FilePath -> FilePath -> IO ()
-mkIrregsTab mpath outpath = do
+-- recebe três paths: 
+-- mpath   - diretório dos arquivos a serem verificados
+-- rpath   - arquivo das regras
+-- outpath - onde serão escritas as formas irregulares
+mkIrregsTab :: FilePath -> FilePath -> FilePath -> IO ()
+mkIrregsTab mpath rpath outpath = do
   paths <- listDirectory mpath
   dicts <- mapM (lemmaDict . combine dir) paths
-  rules <- readRules "/my-irules.tdl"
+  rules <- readRules rpath
   TO.writeFile outpath (aux $ getIrregs (M.toList $ foldr (M.unionWith (++)) M.empty dicts) rules)
  where  
    aux x = T.intercalate "\n" $ map T.intercalate "\t" x
