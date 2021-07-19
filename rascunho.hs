@@ -11,6 +11,52 @@ import Data.List (groupBy, intercalate, sort, nub, sortOn)
 import Data.List.Split (splitPlaces, chunksOf)
 import Data.Maybe ( fromJust, isNothing )
 import qualified Text.Regex as R
+import Data.Aeson
+  ( FromJSON(parseJSON)
+  , Options(fieldLabelModifier)
+  , ToJSON(toEncoding, toJSON)
+  , defaultOptions
+  , eitherDecode
+  , genericParseJSON
+  , genericToEncoding
+  , genericToJSON
+  )
+import qualified Data.ByteString.Lazy as B
+import qualified Data.ByteString.Lazy.Char8 as C
+import GHC.Generics ( Generic )
+ 
+data LexicalRule = 
+  LexicalRule
+    { identifier :: String
+    , affix_type :: String
+    , patterns :: [(String,String)]
+    } deriving (Show, Generic)
+
+instance FromJSON LexicalRule
+instance ToJSON LexicalRule  
+
+data LetterSet =
+  LetterSet
+    { var :: String
+    , characters :: String
+    } deriving (Show, Generic)
+
+instance FromJSON LetterSet
+instance ToJSON LetterSet
+
+data Document =
+  Document
+    { letterSet :: [LetterSet]
+    , rules :: [LexicalRule]
+    } deriving (Show, Generic)
+
+instance FromJSON Document
+instance ToJSON Document
+
+
+readJSON :: FilePath -> IO (Either String Document)
+readJSON path = (eitherDecode <$> B.readFile path) :: IO (Either String Document)
+
 
 -- para cada par de sufixos (R.Regex, String) correspondente a uma regra, se existir o primeiro sufixo 
 -- (Regex) no lema, ele é substituído pelo segundo sufixo (String)
@@ -50,6 +96,7 @@ lemmaDict path = do
 -- a partir do json das regras cria um map associando cada regra a uma lista de tuplas de sufixos, 
 -- sendo o primeiro uma Regex (expressão regular)
 readRules :: FilePath -> M.Map T.Text [(R.Regex,String)]
+
 
 -- recebe três paths: 
 -- mpath   - diretório dos arquivos a serem verificados
