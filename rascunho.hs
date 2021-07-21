@@ -58,16 +58,17 @@ readJSON :: FilePath -> IO (Either String Document)
 readJSON path = (eitherDecode <$> B.readFile path) :: IO (Either String Document)
 
 
+
 -- para cada par de sufixos (R.Regex, String) correspondente a uma regra, se existir o primeiro sufixo 
 -- (Regex) no lema, ele é substituído pelo segundo sufixo (String)
 getRegForm :: String -> [(R.Regex,String)] -> [T.Text]
 getRegForm lema (x:xs)
- | (R.matchRegex (fst x) lema) == Nothing = []
+ | (R.matchRegex (fst x) lema) == Nothing = getRegForm lema xs
  | otherwise = [T.pack $ R.subRegex (fst x) lema (snd x)] ++ getRegForm lema xs
-getRegForm lema [] = []
+getRegForm lema [] = [T.pack lema]
 
 -- verifica se a forma é regular, se não for retorna a forma irregular e a regular que 
--- foi construída pela regra
+-- foi contruída pela regra
 -- rs :: lista com as formas regulares produzidas pela func getRegForm
 isRegular :: T.Text -> T.Text -> T.Text -> [T.Text] -> [[T.Text]]
 isRegular forma lema regra rs
@@ -79,16 +80,18 @@ isRegular forma lema regra rs
 -- e concatenando a saída
 getIrregs :: [(T.Text,[(T.Text,T.Text)])] -> M.Map T.Text [(R.Regex,String)] -> [[T.Text]]
 getIrregs xs m =
-  concatMap ((\k (x,ys) -> concatMap (aux x k) ys) m) xs
+  concatMap ((\k (x,ys) -> concatMap (aux x k) (nub ys)) m) xs
  where
-   aux l m (f,r) = isRegular l r f (getRegForm (T.unpack l) (fromJust (M.lookup r m)))
+   aux l m (f,r) 
+    | isNothing (M.lookup r m) = [[]] 
+    | otherwise = isRegular f l r (getRegForm (T.unpack l) (fromJust (M.lookup r m)))
 
 getRule :: T.Text -> M.Map T.Text [T.Text] -> T.Text
 getRule tags m
- | isNothing (M.lookup tags m) = ""
+ | isNothing (M.lookup tags m) = tags
  | otherwise = head $ fromJust $ M.lookup tags m
 
--- constrói um map do tipo lemma: [(form, regra)] ou seja, para cada lema estão associadas as 
+-- constrói um map do tipo lemma: [(form, tags)] ou seja, para cada lema estão associadas as 
 -- entradas que possuem o mesmo
 lemmaDict :: M.Map T.Text [T.Text] -> FilePath -> IO (M.Map T.Text [(T.Text, T.Text)])
 lemmaDict mtags path = do
@@ -96,13 +99,16 @@ lemmaDict mtags path = do
   return $ M.fromListWith (++) $ aux mtags (T.lines content)
  where
    aux m xs = map (\s -> let p = (T.breakOn "+" (last $ T.splitOn "\t" s))
-    in (fst p , [(head (T.splitOn "\t" s), getRule (snd p) m )])) xs
+    in (T.append (fst p) "\b" , [(T.append (head (T.splitOn "\t" s)) "\b", getRule (snd p) m )])) xs
 
 
 subLS :: String -> [LetterSet] -> (String, String) -> (R.Regex, String)
 subLS w (x:xs) (a,b)
  | (R.matchRegex (R.mkRegex $ var x) a) == Nothing = subLS w xs (a,b)
- | otherwise = (R.mkRegex (R.subRegex (R.mkRegex (var x ++ w)) a ("["++(characters x)++"]")),b)
+ | otherwise = (R.mkRegex (w ++ (R.subRegex (R.mkRegex (var x )) a ("["++(characters x)++"]"))),b)
+subLS w [] (a,b) 
+ |a == "*" = (R.mkRegex "\b",b ++ "\b") 
+ |otherwise = (R.mkRegex a,b) 
 
 path2Doc :: [FilePath] -> IO [Document]
 path2Doc = mapM $ fmap (\(Right x) -> x) . readJSON
@@ -135,4 +141,3 @@ mkIrregsTab dir rpath mpath outpath = do
   TO.writeFile outpath (aux $ getIrregs (M.toList $ foldr (M.unionWith (++)) M.empty dicts) rules)
  where
    aux x = T.intercalate "\n" $ map (T.intercalate "\t") x
-
