@@ -24,7 +24,9 @@ import Data.Aeson
 import qualified Data.ByteString.Lazy as B
 import qualified Data.ByteString.Lazy.Char8 as C
 import GHC.Generics ( Generic )
- 
+
+------ parser para o JSON que contém os dados do arquivo my-irules.tdl 
+
 data LexicalRule = 
   LexicalRule
     { identifier :: String
@@ -57,7 +59,76 @@ instance ToJSON Document
 readJSON :: FilePath -> IO (Either String Document)
 readJSON path = (eitherDecode <$> B.readFile path) :: IO (Either String Document)
 
+------ 
 
+-- apaga listas vazias
+del :: [[T.Text]] -> [[T.Text]]
+del (x:xs) 
+ | x == [] = del xs
+ | otherwise = x : del xs
+del [] = []
+
+------ construindo map das regras para as expressões regulares
+
+-- variável -> conjunto de letras -> par de sufixos
+auxSubLS :: String -> String -> (String,String) -> [(String, String)]
+auxSubLS y (x:xs) (a,b) =
+  ((R.subRegex (R.mkRegex y) a [x] ),(R.subRegex (R.mkRegex y) b [x] )):auxSubLS y xs (a,b)
+auxSubLS y [] (a,b) = []
+
+-- constrói as tuplas de sufixos substituindo as variáveis pelas letras que elas representam
+subLS :: [LetterSet] -> (String, String) -> [(String, String)]
+subLS (x:xs) (a,b)
+ | (R.matchRegex (R.mkRegex $ var x) a) == Nothing = subLS xs (a,b)
+ | otherwise = concatMap (subLS xs) (auxSubLS (var x) (characters x) (a,b) ) 
+subLS [] (a,b) 
+ |a == "*" = [("",b)] 
+ |otherwise = [(a,b)] 
+
+path2Doc :: [FilePath] -> IO [Document]
+path2Doc = mapM $ fmap (\(Right x) -> x) . readJSON
+
+auxReadRules :: [(String,String)] -> [(R.Regex,String)]
+auxReadRules  = map (\(a,b) -> (R.mkRegex (a ++ "\b"),b))
+
+-- a partir do json das regras cria um map associando cada regra a uma lista de tuplas de sufixos, 
+-- sendo o primeiro uma Regex (expressão regular)
+readRules :: FilePath -> IO (M.Map T.Text [(R.Regex,String)])
+readRules path = do
+  irules <- path2Doc [path]
+  return $ M.fromList $ map (aux (letterSet (head irules))) (rules (head irules))
+ where
+   aux ls r = (T.pack (identifier r), auxReadRules $ concatMap (subLS ls) (patterns r))
+
+------ construindo map das entradas do MorphoBr 
+
+getRule :: T.Text -> M.Map T.Text [T.Text] -> T.Text
+getRule tags m
+ | isNothing (M.lookup tags m) = tags
+ | otherwise = head $ fromJust $ M.lookup tags m
+
+-- constrói um map do tipo lemma: [(form, regra)] ou seja, para cada lema estão associadas as 
+-- entradas que possuem o mesmo
+lemmaDict :: M.Map T.Text [T.Text] -> FilePath -> IO (M.Map T.Text [(T.Text, T.Text)])
+lemmaDict mtags path = do
+  content <- TO.readFile path
+  return $ M.fromListWith (++) $ aux mtags (T.lines content)
+ where
+   aux m xs = map (\s -> let p = (T.breakOn "+" (last $ T.splitOn "\t" s))
+    in (T.append (fst p) "\b" , [((head (T.splitOn "\t" s)), getRule (snd p) m)])) xs
+
+------  
+
+-- constrói um map do tipo tags: [regra] para relacionar as tags do MorphoBr às regras 
+-- do arquivo my-irules.tdl
+tag2rule :: FilePath -> IO (M.Map T.Text [T.Text])
+tag2rule path = do
+  content <- TO.readFile path
+  return $ M.fromListWith (++) $ map aux (T.lines content)
+ where
+   aux = \s -> let p = T.splitOn "\t" s in (head p, tail p)
+
+------ comparando formas
 
 -- para cada par de sufixos (R.Regex, String) correspondente a uma regra, se existir o primeiro sufixo 
 -- (Regex) no lema, ele é substituído pelo segundo sufixo (String)
@@ -68,13 +139,12 @@ getRegForm lema (x:xs)
 getRegForm lema [] = [T.pack lema]
 
 -- verifica se a forma é regular, se não for retorna a forma irregular e a regular que 
--- foi contruída pela regra
+-- foi construída pela regra
 -- rs :: lista com as formas regulares produzidas pela func getRegForm
 isRegular :: T.Text -> T.Text -> T.Text -> [T.Text] -> [[T.Text]]
 isRegular forma lema regra rs
  | member forma rs = [[]]
- | otherwise = [[forma, regra, lema],[(head rs), regra, lema]]
-
+ | otherwise = [[forma, regra, T.init lema],[head rs, regra, T.init lema]]
 
 -- para cada lema do map, a função verifica se suas formas são regulares, chamando a função isRegular
 -- e concatenando a saída
@@ -86,50 +156,6 @@ getIrregs xs m =
     | isNothing (M.lookup r m) = [[]] 
     | otherwise = isRegular f l r (getRegForm (T.unpack l) (fromJust (M.lookup r m)))
 
-getRule :: T.Text -> M.Map T.Text [T.Text] -> T.Text
-getRule tags m
- | isNothing (M.lookup tags m) = tags
- | otherwise = head $ fromJust $ M.lookup tags m
-
--- constrói um map do tipo lemma: [(form, tags)] ou seja, para cada lema estão associadas as 
--- entradas que possuem o mesmo
-lemmaDict :: M.Map T.Text [T.Text] -> FilePath -> IO (M.Map T.Text [(T.Text, T.Text)])
-lemmaDict mtags path = do
-  content <- TO.readFile path
-  return $ M.fromListWith (++) $ aux mtags (T.lines content)
- where
-   aux m xs = map (\s -> let p = (T.breakOn "+" (last $ T.splitOn "\t" s))
-    in (T.append (fst p) "\b" , [(T.append (head (T.splitOn "\t" s)) "\b", getRule (snd p) m )])) xs
-
-
-subLS :: String -> [LetterSet] -> (String, String) -> (R.Regex, String)
-subLS w (x:xs) (a,b)
- | (R.matchRegex (R.mkRegex $ var x) a) == Nothing = subLS w xs (a,b)
- | otherwise = (R.mkRegex (w ++ (R.subRegex (R.mkRegex (var x )) a ("["++(characters x)++"]"))),b)
-subLS w [] (a,b) 
- |a == "*" = (R.mkRegex "\b",b ++ "\b") 
- |otherwise = (R.mkRegex a,b) 
-
-path2Doc :: [FilePath] -> IO [Document]
-path2Doc = mapM $ fmap (\(Right x) -> x) . readJSON
-
--- a partir do json das regras cria um map associando cada regra a uma lista de tuplas de sufixos, 
--- sendo o primeiro uma Regex (expressão regular)
-readRules :: FilePath -> IO (M.Map T.Text [(R.Regex,String)])
-readRules path = do
-  let w = "[abcdefghijklmnopqrstuvwxyzçáéóõôê]*"
-  irules <- path2Doc [path]
-  return $ M.fromList $ map (aux w (letterSet (head irules))) (rules (head irules))
- where
-   aux w ls r = (T.pack (identifier r), map (subLS w ls) (patterns r))
-
-tag2rule :: FilePath -> IO (M.Map T.Text [T.Text])
-tag2rule path = do
-  content <- TO.readFile path
-  return $ M.fromListWith (++) $ map aux (T.lines content)
- where
-   aux = \s -> let p = T.splitOn "\t" s in (head p, tail p)
-
 -- recebe dois paths, um com o diretório dos arquivos a serem verificados e outro onde serão 
 -- escritas as formas irregulares
 mkIrregsTab :: FilePath -> FilePath -> FilePath -> FilePath -> IO ()
@@ -140,4 +166,4 @@ mkIrregsTab dir rpath mpath outpath = do
   rules <- readRules rpath
   TO.writeFile outpath (aux $ getIrregs (M.toList $ foldr (M.unionWith (++)) M.empty dicts) rules)
  where
-   aux x = T.intercalate "\n" $ map (T.intercalate "\t") x
+   aux x = T.intercalate "\n" $ map (T.intercalate "\t") $ del x
