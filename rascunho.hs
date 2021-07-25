@@ -141,20 +141,22 @@ getRegForm lema [] = [T.pack lema]
 -- verifica se a forma é regular, se não for retorna a forma irregular e a regular que 
 -- foi construída pela regra
 -- rs :: lista com as formas regulares produzidas pela func getRegForm
-isRegular :: T.Text -> T.Text -> T.Text -> [T.Text] -> [[T.Text]]
-isRegular forma lema regra rs
+isRegular :: T.Text -> T.Text -> T.Text -> [T.Text] -> M.Map T.Text [(T.Text, T.Text)] -> [[T.Text]]
+isRegular forma lema regra rs morpho
  | member forma rs = [[]]
- | otherwise = [[forma, regra, T.init lema],[head rs, regra, T.init lema]]
+ | member (head rs) (map fst (fromJust (M.lookup lema morpho))) 
+    = [[head rs,T.toUpper regra, T.init lema],[forma, T.toUpper regra, T.init lema]]
+ | otherwise = [[forma, T.toUpper regra, T.init lema]]
 
 -- para cada lema do map, a função verifica se suas formas são regulares, chamando a função isRegular
 -- e concatenando a saída
 getIrregs :: [(T.Text,[(T.Text,T.Text)])] -> M.Map T.Text [(R.Regex,String)] -> [[T.Text]]
 getIrregs xs m =
-  concatMap ((\k (x,ys) -> concatMap (aux x k) (nub ys)) m) xs
+  concatMap ((\k morpho (x,ys) -> concatMap (aux x k morpho) (nub ys)) m (M.fromList xs)) xs
  where
-   aux l m (f,r) 
+   aux l m morpho (f,r) 
     | isNothing (M.lookup r m) = [[]] 
-    | otherwise = isRegular f l r (getRegForm (T.unpack l) (fromJust (M.lookup r m)))
+    | otherwise = isRegular f l r (getRegForm (T.unpack l) (fromJust (M.lookup r m))) morpho
 
 -- recebe dois paths, um com o diretório dos arquivos a serem verificados e outro onde serão 
 -- escritas as formas irregulares
