@@ -112,7 +112,7 @@ readRules path = do
 
 getRule :: T.Text -> M.Map T.Text [T.Text] -> T.Text
 getRule tags m
- | isNothing (M.lookup tags m) = tags
+ | isNothing (M.lookup tags m) = ""
  | otherwise = head $ fromJust $ M.lookup tags m
 
 -- constrói um map do tipo lemma: [(form, regra)] ou seja, para cada lema estão associadas as 
@@ -152,7 +152,7 @@ getRegForm lema [] = [T.pack lema]
 isRegular :: T.Text -> T.Text -> T.Text -> [T.Text] -> M.Map T.Text [(T.Text, T.Text)] -> [[T.Text]]
 isRegular forma lema regra rs morpho
  | member forma rs = [[]]
- | member (head rs) (map fst (fromJust (M.lookup lema morpho))) 
+ | member (head rs,regra) (fromJust (M.lookup lema morpho)) 
     = [[head rs,T.toUpper regra, T.init lema],[forma, T.toUpper regra, T.init lema]]
  | otherwise = [[forma, T.toUpper regra, T.init lema]]
 
