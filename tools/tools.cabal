@@ -27,8 +27,9 @@ source-repository head
 
 library
   exposed-modules:
-      Lib
-      Rascunho
+      Irregs
+      Clean
+      MorphoTools
   other-modules:
       Paths_tools
   hs-source-dirs:

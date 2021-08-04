@@ -1,8 +1,9 @@
 
 {-# LANGUAGE DeriveGeneric, OverloadedStrings #-}
 
-module Rascunho where
+module Irregs where
 
+import MorphoTools
 import Data.Either
 import System.IO
 import qualified Data.Map as M
@@ -63,11 +64,6 @@ readJSON :: FilePath -> IO (Either String Document)
 readJSON path = (eitherDecode <$> B.readFile path) :: IO (Either String Document)
 
 ------ 
-
-member :: (Eq a) => a -> [a] -> Bool
-member x [] = False
-member x (y:ys) | x==y = True
-                | otherwise = member x ys
 
 -- apaga listas vazias
 del :: [[T.Text]] -> [[T.Text]]
