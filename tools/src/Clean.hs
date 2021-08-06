@@ -20,13 +20,16 @@ import qualified Text.Regex as R
 auxRegra2 :: (T.Text,[T.Text]) -> (T.Text,[T.Text]) -> [T.Text]
 auxRegra2 (forma1,tags1) (forma2,tags2)
  | ((T.last forma1) == 's') && (T.last forma2) == 's'
-   = [(T.append forma1 (T.append "\t" (T.intercalate "+" tags1))),
-      (T.append forma2 (T.append "\t" (T.intercalate "+" tags2)))] -- []
- | (T.last forma1) == 's' = [T.append forma1 (T.append "\t" (T.intercalate "+" tags1))] -- /=
- | otherwise = [T.append forma2 (T.append "\t" (T.intercalate "+" tags2))]
+   = []-- [(T.append forma1 (T.append "\t" (T.intercalate "+" tags1))),
+      --(T.append forma2 (T.append "\t" (T.intercalate "+" tags2)))] 
+ | (T.last forma1) == 's' = [T.append forma2 (T.append "\t" (T.intercalate "+" tags2))]
+ | (T.last forma2) == 's' = [T.append forma1 (T.append "\t" (T.intercalate "+" tags1))] 
+ | otherwise = [T.append "*" (T.append forma1 (T.append "\t" (T.intercalate "+" tags1))),
+      T.append "*" (T.append forma2 (T.append "\t" (T.intercalate "+" tags2)))]
 
--- Sejam (forma1,feats1) e (forma2,feats2) de um dado lema, onde feats1==feats2 e 
--- feats1 termina em 2+SG e forma1 != forma2, eliminar a forma duplicada que não termina em s
+-- Sejam (forma1,feats1) e (forma2,feats2) de um dado lema, onde feats1==feats2 
+-- E feats1 termina em 2+SG E forma1 != forma2 E forma1 ou forma2 termina em s, 
+-- eliminar a forma duplicada que não termina em s
 regra2 :: (T.Text, [T.Text]) -> (T.Text, [T.Text]) -> Bool
 regra2 (forma1,tags1) (forma2,tags2)
  | (tags1 == tags2) && (member (T.pack "2") tags1) && (member (T.pack "SG") tags1)
@@ -51,14 +54,14 @@ regra3 (forma,tags)
 
 filterEntries :: T.Text -> [(T.Text, [T.Text])] -> [T.Text]
 filterEntries lema (x:y:xs)
- | regra1 x = filterEntries lema (y:xs)   --[T.append (fst x) (T.append "\t" (T.intercalate "+" (snd x)))] ++ filterEntries lema (y:xs)
+ | regra1 x = [T.append (fst x) (T.append "\t" (T.intercalate "+" (snd x)))] ++ filterEntries lema (y:xs)   --[T.append (fst x) (T.append "\t" (T.intercalate "+" (snd x)))] ++ filterEntries lema (y:xs)
  | regra2 x y = auxRegra2 x y  ++ filterEntries lema xs
- | regra3 x = filterEntries lema (y:xs)   --[T.append (fst x) (T.append "\t" (T.intercalate "+" (snd x)))] ++ filterEntries lema (y:xs)
- | otherwise = [T.append (fst x) (T.append "\t" (T.intercalate "+" (snd x)))] ++ filterEntries lema (y:xs) -- filterEntries lema (y:xs)
+ | regra3 x = [T.append (fst x) (T.append "\t" (T.intercalate "+" (snd x)))] ++ filterEntries lema (y:xs)   --[T.append (fst x) (T.append "\t" (T.intercalate "+" (snd x)))] ++ filterEntries lema (y:xs)
+ | otherwise =  filterEntries lema (y:xs) -- filterEntries lema (y:xs)
 filterEntries lema [] = []
 filterEntries lema [x]
- | ((regra1 x)||(regra3 x)) =  [] --[T.append (fst x) (T.append "\t" (T.intercalate "+" (snd x)))]
- | otherwise = [T.append (fst x) (T.append "\t" (T.intercalate "+" (snd x)))] --[]
+ | ((regra1 x)||(regra3 x)) = [T.append (fst x) (T.append "\t" (T.intercalate "+" (snd x)))] --[T.append (fst x) (T.append "\t" (T.intercalate "+" (snd x)))]
+ | otherwise = []--[T.append (fst x) (T.append "\t" (T.intercalate "+" (snd x)))]
 
 getEntries :: [(T.Text,[(T.Text, T.Text)])] -> [T.Text]
 getEntries (x:xs) =
@@ -82,12 +85,20 @@ clMap path = do
  where
    aux xs = map (\s -> let p = (T.breakOn "-" s) in (fst p,[])) xs
 
+sep :: [T.Text]  -> [T.Text]
+sep (x:xs) 
+ | T.head x == '*' = sep xs
+ | otherwise = [x] ++ sep xs
+sep [] = []
+
+
 clean :: FilePath -> FilePath -> IO ()
 clean vdir outpath = do
   vpaths <- listDirectory vdir
   vdicts <- mapM (mkMap . combine vdir) vpaths
-  TO.writeFile outpath (T.intercalate "\n"
-      (getEntries  (M.toList $ foldr (M.unionWith (++)) M.empty vdicts)))
+  TO.writeFile outpath (T.intercalate "\n" $ sep 
+    (getEntries  (M.toList $ foldr (M.unionWith (++)) M.empty vdicts)))
+
 
 
 notClitic :: FilePath -> FilePath -> FilePath -> IO ()
@@ -96,10 +107,10 @@ notClitic cdir entries outpath = do
   cdicts <- mapM (clMap . combine cdir) cpaths
   erros <- TO.readFile entries
   TO.writeFile outpath (T.intercalate "\n"
-      (aux  (foldr (M.unionWith (++)) M.empty cdicts) (map (\x -> fst (T.breakOn "\t" x)) (T.lines erros))))
+      (aux  (foldr (M.unionWith (++)) M.empty cdicts) (map (T.breakOn "\t") (T.lines erros))))
  where
    aux cmap (x:xs)
-    |M.lookup x cmap == Nothing = x : aux cmap xs
+    |M.lookup (fst x) cmap == Nothing = T.append (fst x) (T.append "\t" (snd x)) : aux cmap xs
     | otherwise = aux cmap xs
    aux cmap [] = []
 
