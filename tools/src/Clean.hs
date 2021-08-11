@@ -17,23 +17,31 @@ import Data.Maybe ( fromJust, isNothing )
 import qualified Text.Regex as R
 
 
-auxRegra2 :: (T.Text,[T.Text]) -> (T.Text,[T.Text]) -> [T.Text]
-auxRegra2 (forma1,tags1) (forma2,tags2)
+semSauxRegra2 :: (T.Text,[T.Text]) -> (T.Text,[T.Text]) -> [T.Text]
+semSauxRegra2 (forma1,tags1) (forma2,tags2)
+ | ((T.last forma1) == 's') && (T.last forma2) == 's'
+   = []
+ | (T.last forma1) == 's' = []
+ | (T.last forma2) == 's' = [] 
+ | otherwise = [T.append "*" (T.append forma1 (T.append "\t" (T.intercalate "+" tags1))),
+     T.append "*" (T.append forma2 (T.append "\t" (T.intercalate "+" tags2)))]
+
+errosAuxRegra2 :: (T.Text,[T.Text]) -> (T.Text,[T.Text]) -> [T.Text]
+errosAuxRegra2 (forma1,tags1) (forma2,tags2)
  | ((T.last forma1) == 's') && (T.last forma2) == 's'
    = []-- [(T.append forma1 (T.append "\t" (T.intercalate "+" tags1))),
       --(T.append forma2 (T.append "\t" (T.intercalate "+" tags2)))] 
  | (T.last forma1) == 's' = [T.append forma2 (T.append "\t" (T.intercalate "+" tags2))]
  | (T.last forma2) == 's' = [T.append forma1 (T.append "\t" (T.intercalate "+" tags1))] 
- | otherwise = [T.append "*" (T.append forma1 (T.append "\t" (T.intercalate "+" tags1))),
-      T.append "*" (T.append forma2 (T.append "\t" (T.intercalate "+" tags2)))]
+ | otherwise = []
 
 -- Sejam (forma1,feats1) e (forma2,feats2) de um dado lema, onde feats1==feats2 
 -- E feats1 termina em 2+SG E forma1 != forma2 E forma1 ou forma2 termina em s, 
 -- eliminar a forma duplicada que não termina em s
 regra2 :: (T.Text, [T.Text]) -> (T.Text, [T.Text]) -> Bool
 regra2 (forma1,tags1) (forma2,tags2)
- | (tags1 == tags2) && (member (T.pack "2") tags1) && (member (T.pack "SG") tags1)
-   && (forma1 /= forma2) = True
+ | (not (member (T.pack "IMP") tags1)) && (tags1 == tags2) && (member (T.pack "2") tags1)
+  && (member (T.pack "SG") tags1) && (forma1 /= forma2) = True
  | otherwise = False
 
 -- Se +IMP+ não é parte das features de uma forma de um dado lema de verbo, 
@@ -51,24 +59,41 @@ regra3 (forma,tags)
  | (member (T.last forma) ['á','ê','i','í','ô']) && (member (T.pack "INF") tags) = True
  | otherwise = False
 
+regra2FilterEntries :: T.Text -> [(T.Text, [T.Text])] -> [T.Text]
+regra2FilterEntries lema (x:y:xs)
+ | regra1 x = [] ++ regra2FilterEntries lema (y:xs)    
+ | regra2 x y = semSauxRegra2 x y  ++ regra2FilterEntries lema xs
+ | regra3 x = [] ++ regra2FilterEntries lema (y:xs)  
+ | otherwise =  regra2FilterEntries lema (y:xs) 
+regra2FilterEntries lema [] = []
+regra2FilterEntries lema [x]
+ | ((regra1 x)||(regra3 x)) = [] 
+ | otherwise = []
 
-filterEntries :: T.Text -> [(T.Text, [T.Text])] -> [T.Text]
-filterEntries lema (x:y:xs)
- | regra1 x = [T.append (fst x) (T.append "\t" (T.intercalate "+" (snd x)))] ++ filterEntries lema (y:xs)   --[T.append (fst x) (T.append "\t" (T.intercalate "+" (snd x)))] ++ filterEntries lema (y:xs)
- | regra2 x y = auxRegra2 x y  ++ filterEntries lema xs
- | regra3 x = [T.append (fst x) (T.append "\t" (T.intercalate "+" (snd x)))] ++ filterEntries lema (y:xs)   --[T.append (fst x) (T.append "\t" (T.intercalate "+" (snd x)))] ++ filterEntries lema (y:xs)
- | otherwise =  filterEntries lema (y:xs) -- filterEntries lema (y:xs)
-filterEntries lema [] = []
-filterEntries lema [x]
- | ((regra1 x)||(regra3 x)) = [T.append (fst x) (T.append "\t" (T.intercalate "+" (snd x)))] --[T.append (fst x) (T.append "\t" (T.intercalate "+" (snd x)))]
- | otherwise = []--[T.append (fst x) (T.append "\t" (T.intercalate "+" (snd x)))]
-
-getEntries :: [(T.Text,[(T.Text, T.Text)])] -> [T.Text]
-getEntries (x:xs) =
-   filterEntries (fst x) (map aux (sortOn snd (nub (snd x)))) ++ getEntries xs
+regra2GetEntries :: [(T.Text,[(T.Text, T.Text)])] -> [T.Text]
+regra2GetEntries (x:xs) =
+   regra2FilterEntries (fst x) (map aux (sortOn snd (nub (snd x)))) ++ regra2GetEntries xs
  where
    aux = \x -> (fst x, T.splitOn "+" (snd x))
-getEntries [] = []
+regra2GetEntries [] = []
+
+errosFilterEntries :: T.Text -> [(T.Text, [T.Text])] -> [T.Text]
+errosFilterEntries lema (x:y:xs)
+ | regra1 x = [T.append (fst x) (T.append "\t" (T.intercalate "+" (snd x)))] ++ errosFilterEntries lema (y:xs) -- [] ++ filterEntries lema (y:xs)    
+ | regra2 x y = errosAuxRegra2 x y  ++ errosFilterEntries lema xs
+ | regra3 x = [T.append (fst x) (T.append "\t" (T.intercalate "+" (snd x)))] ++ errosFilterEntries lema (y:xs) -- [] ++ filterEntries lema (y:xs)  
+ | otherwise =  errosFilterEntries lema (y:xs) 
+errosFilterEntries lema [] = []
+errosFilterEntries lema [x]
+ | ((regra1 x)||(regra3 x)) = [T.append (fst x) (T.append "\t" (T.intercalate "+" (snd x)))] 
+ | otherwise = []--[T.append (fst x) (T.append "\t" (T.intercalate "+" (snd x)))]
+
+errosGetEntries :: [(T.Text,[(T.Text, T.Text)])] -> [T.Text]
+errosGetEntries (x:xs) =
+   errosFilterEntries (fst x) (map aux (sortOn snd (nub (snd x)))) ++ errosGetEntries xs
+ where
+   aux = \x -> (fst x, T.splitOn "+" (snd x))
+errosGetEntries [] = []
 
 mkMap :: FilePath -> IO (M.Map T.Text [(T.Text, T.Text)])
 mkMap path = do
@@ -85,20 +110,32 @@ clMap path = do
  where
    aux xs = map (\s -> let p = (T.breakOn "-" s) in (fst p,[])) xs
 
-sep :: [T.Text]  -> [T.Text]
-sep (x:xs) 
- | T.head x == '*' = sep xs
- | otherwise = [x] ++ sep xs
-sep [] = []
+errosSep :: [T.Text]  -> [T.Text]
+errosSep (x:xs) 
+ | T.head x == '*' = errosSep xs
+ | otherwise = [x] ++ errosSep xs
+errosSep [] = []
 
+regra2sep :: [T.Text]  -> [T.Text]
+regra2sep (x:xs) 
+ | T.head x == '*' = [T.tail x] ++ regra2sep xs
+ | otherwise =  regra2sep xs
+regra2sep [] = []
 
-clean :: FilePath -> FilePath -> IO ()
-clean vdir outpath = do
+getRegra2semS :: FilePath -> FilePath -> IO ()
+getRegra2semS vdir outpath = do
   vpaths <- listDirectory vdir
   vdicts <- mapM (mkMap . combine vdir) vpaths
-  TO.writeFile outpath (T.intercalate "\n" $ sep 
-    (getEntries  (M.toList $ foldr (M.unionWith (++)) M.empty vdicts)))
+  TO.writeFile outpath (T.intercalate "\n" $ regra2sep 
+    (regra2GetEntries  (M.toList $ foldr (M.unionWith (++)) M.empty vdicts)))
 
+
+getErros :: FilePath -> FilePath -> IO ()
+getErros vdir outpath = do
+  vpaths <- listDirectory vdir
+  vdicts <- mapM (mkMap . combine vdir) vpaths
+  TO.writeFile outpath (T.intercalate "\n" $ errosSep 
+    (errosGetEntries  (M.toList $ foldr (M.unionWith (++)) M.empty vdicts)))
 
 
 notClitic :: FilePath -> FilePath -> FilePath -> IO ()
