@@ -127,7 +127,7 @@ delUpir vdir outpath = do
     (splitEvery 19000 (toEntries $ M.toList $ foldr (M.unionWith (++)) M.empty (map auxDelUpir dicts)))
  where
     aux outpath (x:xs) =
-     TO.writeFile (combine outpath ("verbs-"++(take 7 $ T.unpack x)++".dict"))
+     TO.writeFile (combine outpath ("verbs-"++(take 7 $ T.unpack $ fst $ T.breakOn "\t" x)++".dict"))
      (T.append (T.intercalate "\n" (x:xs)) "\n")
 
 
