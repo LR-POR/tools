@@ -38,7 +38,7 @@ split entries pos outdir =
      (T.append (T.intercalate "\n" (x:xs)) "\n")
 
 ------
-
+-- (lema,[(forma,+tags)])
 morphoMap :: FilePath -> IO (M.Map T.Text [(T.Text, T.Text)])
 morphoMap path = do
   content <- TO.readFile path
@@ -46,6 +46,12 @@ morphoMap path = do
  where
    aux xs = map (\s -> let p = (T.breakOn "+" (last $ T.splitOn "\t" s))
     in (fst p , [(head (T.splitOn "\t" s), snd p)])) xs
+
+toEntries :: [(T.Text,[(T.Text, T.Text)])] -> [T.Text]
+toEntries xs =  concatMap (\(a,b) ->  map (aux a) (nub b)) xs
+ where 
+   aux lema (forma,tags) = 
+     T.append forma (T.append "\t" (T.append lema tags))
 
 
 member :: (Eq a) => a -> [a] -> Bool

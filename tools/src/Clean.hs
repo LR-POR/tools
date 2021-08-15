@@ -111,6 +111,25 @@ checkDelete dir path = do
    | otherwise = ["dup not found: " ++ (T.unpack x)] ++ aux map xs
   aux map [] = []
 
+-- corrigir entradas com lema "upir" para lema "mançupir" 
+
+auxDelUpir :: M.Map T.Text [(T.Text, T.Text)] -> M.Map T.Text [(T.Text, T.Text)]
+auxDelUpir m 
+ | M.member (T.pack "upir") m = M.delete (T.pack "upir") 
+      (M.insert (T.pack "mançupir") (fromJust $ M.lookup (T.pack "upir") m) m)
+ | otherwise = m
+
+delUpir :: FilePath -> FilePath -> IO [()]
+delUpir vdir outpath = do
+  dpaths <- listDirectory vdir
+  dicts <- mapM (morphoMap . combine vdir) dpaths
+  mapM (aux outpath) 
+    (splitEvery 19000 (toEntries $ M.toList $ foldr (M.unionWith (++)) M.empty (map auxDelUpir dicts)))
+ where
+    aux outpath (x:xs) =
+     TO.writeFile (combine outpath ("verbs-"++(take 7 $ T.unpack x)++".dict"))
+     (T.append (T.intercalate "\n" (x:xs)) "\n")
+
 
 
 
