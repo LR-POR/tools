@@ -30,7 +30,7 @@ splitEvery n list = first : (splitEvery n rest)
     (first,rest) = checkLemma n list
 
 split :: [T.Text] -> String -> FilePath -> IO [()]
-split entries pos outdir = 
+split entries pos outdir =
   mapM (aux outdir) (splitEvery 1900 (nub $ sort entries))
  where
    aux outdir (x:xs) =
@@ -48,9 +48,20 @@ morphoMap path = do
     in (fst p , [(head (T.splitOn "\t" s), snd p)])) xs
 
 
-
 member :: (Eq a) => a -> [a] -> Bool
 member x [] = False
 member x (y:ys) | x==y = True
                 | otherwise = member x ys
+
+------ 
+auxCheckDup :: [(T.Text, T.Text)] -> T.Text -> [T.Text]
+auxCheckDup (x:xs) tags
+ | snd x == tags = (snd x) : auxCheckDup xs tags
+ | otherwise = auxCheckDup xs tags
+auxCheckDup [] tags = []
+
+checkDup :: M.Map T.Text [(T.Text, T.Text)] -> (T.Text,T.Text) -> Bool
+checkDup map (lema, tags)
+ | length (auxCheckDup  (fromJust $ M.lookup lema map) tags) > 1 = True
+ | otherwise = False
 
