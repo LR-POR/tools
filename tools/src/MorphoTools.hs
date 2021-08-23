@@ -100,3 +100,23 @@ delete dir path outpath = do
      TO.writeFile (combine outpath ("verbs-"++(take 7 $ T.unpack $ fst $ T.breakOn "\t" x)++".dict"))
      (T.append (T.intercalate "\n" (x:xs)) "\n")
 
+
+---- corrigir lema
+
+auxCorLemma :: (String,String) -> M.Map T.Text [(T.Text, T.Text)] -> M.Map T.Text [(T.Text, T.Text)]
+auxCorLemma (del,new) m 
+ | M.member (T.pack del) m = M.delete (T.pack del)
+      (M.insertWith (++) (T.pack new) (fromJust $ M.lookup (T.pack del) m) m)
+ | otherwise = m
+
+-- (errada,certa)
+corLemma :: FilePath -> (String, String) -> FilePath -> IO [()]
+corLemma vdir ls outpath = do
+  dpaths <- listDirectory vdir
+  dicts <- mapM (morphoMap . combine vdir) dpaths
+  mapM (aux outpath) 
+    (splitEvery 19000 (toEntries $ M.toList $ foldr (M.unionWith (++)) M.empty (map (auxCorLemma ls) dicts)))
+ where
+    aux outpath (x:xs) =
+     TO.writeFile (combine outpath ("verbs-"++(take 7 $ T.unpack $ fst $ T.breakOn "\t" x)++".dict"))
+     (T.append (T.intercalate "\n" (x:xs)) "\n")
