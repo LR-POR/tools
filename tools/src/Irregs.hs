@@ -35,17 +35,23 @@ data LexicalRule =
   LexicalRule
     { identifier :: String
     , affix_type :: String
-    , patterns :: [(String,String)]
+    , patterns :: [Patterns]
     } deriving (Show, Generic)
 
 instance FromJSON LexicalRule
 instance ToJSON LexicalRule  
 
+type Patterns = (String,String)
+
+
 data LetterSet =
   LetterSet
-    { var :: String
-    , characters :: String
+    { var :: Var
+    , characters :: Characters
     } deriving (Show, Generic)
+
+type Var = String
+type Characters = String
 
 instance FromJSON LetterSet
 instance ToJSON LetterSet
@@ -75,13 +81,13 @@ del [] = []
 ------ construindo map das regras para as expressões regulares
 
 -- variável -> conjunto de letras -> par de sufixos
-auxSubLS :: String -> String -> (String,String) -> [(String, String)]
+auxSubLS ::  Var -> Characters -> Patterns -> [Patterns]
 auxSubLS y (x:xs) (a,b) =
   ((R.subRegex (R.mkRegex y) a [x] ),(R.subRegex (R.mkRegex y) b [x] )):auxSubLS y xs (a,b)
 auxSubLS y [] (a,b) = []
 
 -- constrói as tuplas de sufixos substituindo as variáveis pelas letras que elas representam
-subLS :: [LetterSet] -> (String, String) -> [(String, String)]
+subLS :: [LetterSet] -> Patterns -> [Patterns]
 subLS (x:xs) (a,b)
  | (R.matchRegex (R.mkRegex $ var x) a) == Nothing = subLS xs (a,b)
  | otherwise = concatMap (subLS xs) (auxSubLS (var x) (characters x) (a,b) ) 
@@ -92,7 +98,7 @@ subLS [] (a,b)
 path2Doc :: [FilePath] -> IO [Document]
 path2Doc = mapM $ fmap (\(Right x) -> x) . readJSON
 
-auxReadRules :: [(String,String)] -> [(R.Regex,String)]
+auxReadRules :: [Patterns] -> [(R.Regex,String)]
 auxReadRules  = map (\(a,b) -> (R.mkRegex (a ++ "\b"),b))
 
 -- a partir do json das regras cria um map associando cada regra a uma lista de tuplas de sufixos, 
@@ -147,8 +153,8 @@ getRegForm lema [] = [T.pack lema]
 -- rs :: lista com as formas regulares produzidas pela func getRegForm
 isRegular :: T.Text -> T.Text -> T.Text -> [T.Text] -> M.Map T.Text [(T.Text, T.Text)] -> [[T.Text]]
 isRegular forma lema regra rs morpho
- | member forma rs = [[]]
- | member (head rs,regra) (fromJust (M.lookup lema morpho)) 
+ | elem forma rs = [[]]
+ | elem (head rs,regra) (fromJust (M.lookup lema morpho)) 
     = [[head rs,T.toUpper regra, T.init lema],[forma, T.toUpper regra, T.init lema]]
  | otherwise = [[forma, T.toUpper regra, T.init lema]]
 

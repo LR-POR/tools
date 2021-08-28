@@ -1,16 +1,21 @@
 {-# LANGUAGE DeriveGeneric, OverloadedStrings #-}
 
-module MorphoTools where
+module Type where
+
+--import qualified Data.Text as T
+type Dir = String
 
 type Doc = [Entry]
 
 data Entry = Entry 
-    {lemma :: Lemma
+    {form  :: Form
+    ,lemma :: Lemma
     ,pos   :: POS
     ,tags  :: [Tag]
     }
 
-data Lemma = T.Text
+type Form  = String
+type Lemma = String
 
 data POS 
     = A
@@ -20,7 +25,8 @@ data POS
      deriving (Enum, Eq, Read, Show)
 
 data Tag 
-    = INF 
+    = Int
+    | INF 
     | GRD
     | PTPST
     | PRS
@@ -37,9 +43,6 @@ data Tag
     | F
     | SG 
     | PL 
-    | 1
-    | 2
-    | 3
     | DIM 
     | AUG 
     | SUPER
