@@ -3,6 +3,7 @@
 module MorphoTools where
 
 import qualified Type as Tp
+import qualified Irregs as I
 import Data.Either
 import System.IO
 import qualified Data.Map as M
@@ -98,15 +99,15 @@ auxDelete m [] = m
 -- >>>
 delete :: FilePath -> FilePath -> FilePath -> IO [()]
 delete dir path outpath = do
-  let cl = takeBaseName dir
   paths <- listDirectory dir
+  let cl = head $ splitOn "-" $ head paths
   dicts <- mapM (morphoMap . combine dir) paths
   entries <- TO.readFile path
   mapM (aux cl outpath)
     (splitEvery 19000 (toEntries (M.toList $ auxDelete (foldr (M.unionWith (++)) M.empty dicts) (T.lines entries))))
  where
     aux cl outpath (x:xs) =
-     TO.writeFile (combine outpath (cl++(take 7 $ T.unpack $ fst $ T.breakOn "\t" x)++".dict"))
+     TO.writeFile (combine outpath (cl++"-"++(take 7 $ T.unpack $ fst $ T.breakOn "\t" x)++".dict"))
      (T.append (T.intercalate "\n" (x:xs)) "\n")
 
 
@@ -127,8 +128,8 @@ auxCorLemma (del,new) [m] = [toEntries $ M.toList $
     M.delete (T.pack del) (M.insertWith (++) (T.pack new) (fromJust $ M.lookup (T.pack del) m) m)]
 auxCorLemma (del,new) [x,y]
  | M.member (T.pack del) x = map (toEntries . M.toList)
-    [M.delete (T.pack del) x, M.insertWith (++) (T.pack new) (fromJust $ M.lookup (T.pack del) x) y]
- | otherwise =  map (toEntries . M.toList)
+    [M.insertWith (++) (T.pack new) (fromJust $ M.lookup (T.pack del) x) y, M.delete (T.pack del) x]
+ | otherwise = map (toEntries . M.toList)
     [M.insertWith (++) (T.pack new) (fromJust $ M.lookup (T.pack del) y) x, M.delete (T.pack del) y]
 
 -- recebe o path do diretório, o lema atual e o lema novo
@@ -136,15 +137,55 @@ auxCorLemma (del,new) [x,y]
 -- >>>
 corLemma :: FilePath -> (Tp.Lemma,Tp.Lemma) -> IO [()]
 corLemma dirPath (del,new) = do
-  let dir = takeBaseName dirPath
   paths <- listDirectory dirPath
+  let dir = head $ splitOn "-" $ head paths
   dicts <- mapM (morphoMap . combine dirPath) (map (getPath dir (sort paths)) [del, new])
   mapM (aux dirPath dir paths) (auxCorLemma (del,new) dicts)
  where
     aux dirPath dir paths (x:xs)
-     | elem (dir++(take 7 $ T.unpack $ fst $ T.breakOn "\t" x)++".dict") paths =
+     | elem (dir++"-"++(take 7 $ T.unpack $ fst $ T.breakOn "\t" x)++".dict") paths =
       TO.writeFile (combine dirPath (dir++(take 7 $ T.unpack $ fst $ T.breakOn "\t" x)++".dict"))
       (T.append (T.intercalate "\n" (x:xs)) "\n")
      | otherwise = do
+      TO.writeFile (combine dirPath (dir++"-"++(take 7 $ T.unpack $ fst $ T.breakOn "\t" x)++".dict")) (T.append (T.intercalate "\n" (x:xs)) "\n")
       removeFile (combine dirPath (getPath dir (sort paths) (T.unpack x)))
-      TO.writeFile (combine dirPath (dir++(take 7 $ T.unpack $ fst $ T.breakOn "\t" x)++".dict")) (T.append (T.intercalate "\n" (x:xs)) "\n")
+
+------- inserir entradas
+
+getTags :: String -> FilePath -> IO [(T.Text, T.Text)]
+getTags dir tagsPath = do
+  content <- readFile tagsPath
+  return $ map (\s -> let p = T.splitOn "\t" s in (head p, last p)) (aux dir (lines content))
+ where 
+   aux dir (x:xs)
+    |(dir == "verbs") && (take 2 x) == "+V" = T.pack x : aux dir xs
+    |(dir == "nouns") && (take 2 x) == "+N" = T.pack x : aux dir xs
+    |(dir == "adjectives") && (take 2 x) == "+A" = T.pack x : aux dir xs
+    | otherwise = aux dir xs
+   aux dir [] = []
+
+auxNewLemma :: Tp.Lemma -> [(T.Text, T.Text)] -> M.Map T.Text [(R.Regex,String)] -> [(T.Text,T.Text)]
+auxNewLemma lemma tags rules =
+   map (aux lemma rules) tags
+ where 
+   aux lemma rules (t,r) = ((head $ I.getRegForm (lemma++"\b") (fromJust $ M.lookup r rules)), t)
+
+newLemma :: FilePath -> Tp.Lemma -> IO ()
+newLemma dirPath lemma = do
+  paths <- listDirectory dirPath
+  let dir = head $ splitOn "-" $ head paths
+  tags <- getTags dir "../tags.dict"
+  rules <- I.readRules "../irules.json"
+  dict <- morphoMap (combine dirPath (getPath dir (sort paths) lemma))
+  aux dirPath dir paths 
+     (toEntries $ M.toList $ M.insertWith (++) (T.pack lemma) (auxNewLemma lemma tags rules) dict)
+ where 
+   aux dirPath dir paths (x:xs)
+    | elem (dir++"-"++(take 7 $ T.unpack $ fst $ T.breakOn "\t" x)++".dict") paths =
+      TO.writeFile (combine dirPath (dir++(take 7 $ T.unpack $ fst $ T.breakOn "\t" x)++".dict"))
+      (T.append (T.intercalate "\n" (x:xs)) "\n")
+    | otherwise = do
+      TO.writeFile (combine dirPath (dir++"-"++(take 7 $ T.unpack $ fst $ T.breakOn "\t" x)++".dict")) (T.append (T.intercalate "\n" (x:xs)) "\n")
+      removeFile (combine dirPath (getPath dir (sort paths) (T.unpack x)))
+
+
