@@ -200,8 +200,24 @@ newLemma dirPath lemma = do
       TO.writeFile (combine dirPath (dir++"-"++(take 7 $ T.unpack $ last $ T.splitOn "\t" x)++".dict")) (T.append (T.intercalate "\n" (x:xs)) "\n")
       removeFile (combine dirPath (getPath dir (sort paths) (T.unpack x)))
 
-alfaSplit :: [T.Text] -> [[T.Text]]
-alfaSplit = groupBy (\a b -> (T.head a) == (T.head b))
+alfaClean :: [[(T.Text,[(T.Text,T.Text)])]] -> [[(T.Text,[(T.Text,T.Text)])]]
+alfaClean (x:xs)
+ |("a" <= [T.head (fst $ head x)]) && ("z" >= [T.head (fst $ head x)]) = x : alfaClean xs
+ | otherwise = alfaClean xs
+alfaClean [] = []
+
+alfaJoin :: [[(T.Text,[(T.Text,T.Text)])]] -> [[(T.Text,[(T.Text,T.Text)])]]
+alfaJoin xs = map (aux xs) xs
+ where
+   aux (x:xs) y
+    | elem ([T.head (fst $ head x)], [T.head (fst $ head y)]) 
+      [("a","á"),("e","é"),("í","i"),("o","ó"),("u","ú"),
+      ( "a","â"),("e","ê"),("o","ô"),("a","ã"),("o","õ")] =  aux xs (y++x)
+    | otherwise = aux xs y
+   aux [] y = y
+
+alfaSplit :: [(T.Text,[(T.Text,T.Text)])] -> [[(T.Text,[(T.Text,T.Text)])]]
+alfaSplit = groupBy (\a b -> (T.head (fst a)) == (T.head (fst b))) 
 
 alfaOrder :: FilePath -> FilePath -> IO [()]
 alfaOrder dirPath outPath = do 
@@ -209,7 +225,7 @@ alfaOrder dirPath outPath = do
   let dir = head $ splitOn "-" $ head paths
   dicts <- mapM (morphoMap . combine dirPath) paths
   mapM (aux dirPath dir outPath)
-    (alfaSplit $ toEntries (M.toList (foldr (M.unionWith (++)) M.empty dicts)))
+    ( map toEntries  (alfaClean $ alfaJoin $ alfaSplit (M.toList $ M.map (sortOn fst) (foldr (M.unionWith (++)) M.empty dicts))))
  where 
   aux dirPath dir outPath (x:xs) =
     TO.writeFile (combine outPath (dir++"-"++[T.head $ last $ T.splitOn "\t" x]++".dict"))
