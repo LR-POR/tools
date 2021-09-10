@@ -3,7 +3,7 @@
 
 module Irregs where
 
-import MorphoTools
+
 import Data.Either
 import System.IO
 import qualified Data.Map as M

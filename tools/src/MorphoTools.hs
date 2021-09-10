@@ -16,31 +16,6 @@ import Data.List.Split (splitOn, splitPlaces, chunksOf)
 import Data.Maybe ( fromJust, isNothing )
 import qualified Text.Regex as R
 
------- Split
-
-checkLemma :: Int -> [T.Text] -> ([T.Text],[T.Text])
-checkLemma n xs
- | length xs < n = (xs,[])
- | head(T.splitOn "+" (last (T.splitOn "\t" (xs!!n)))) ==
-   head(T.splitOn "+" (last (T.splitOn "\t" (xs!!(n-1))))) = checkLemma (n+1) xs
- | otherwise = splitAt n xs
-
-
-splitEvery :: Int -> [T.Text] -> [[T.Text]]
-splitEvery _ [] = []
-splitEvery n list = first : (splitEvery n rest)
-  where
-    (first,rest) = checkLemma n list
-
--- recebe lista de entradas, nome do diretório e path para salvar as entradas em arquivos divididos
--- >>>
-split :: [T.Text] -> String -> FilePath -> IO [()]
-split entries dir dirPath =
-  mapM (aux dirPath) (splitEvery 1900 (nub $ sort entries))
- where
-   aux dirPath (x:xs) =
-     TO.writeFile (combine dirPath (dir++"-"++(take 3 $ T.unpack x)++".dict"))
-     (T.append (T.intercalate "\n" (x:xs)) "\n")
 
 ------
 -- cria um Map das entradas, a chave é o lema e os valores são uma lista de tuplas contento forma e tags
@@ -98,30 +73,35 @@ auxDelete m [] = m
 -- atualiza todos os arquivos do diretório
 -- >>>
 delete :: FilePath -> FilePath -> FilePath -> IO [()]
-delete dir path outpath = do
-  paths <- listDirectory dir
-  let cl = head $ splitOn "-" $ head paths
-  dicts <- mapM (morphoMap . combine dir) paths
-  entries <- TO.readFile path
-  mapM (aux cl outpath)
-    (splitEvery 19000 (toEntries (M.toList $ auxDelete (foldr (M.unionWith (++)) M.empty dicts) (T.lines entries))))
+delete dirPath epath outpath = do
+  paths <- listDirectory dirPath
+  let dir = head $ splitOn "-" $ head paths
+  dicts <- mapM (morphoMap . combine dirPath) paths
+  entries <- TO.readFile epath
+  mapM (aux dir outpath)
+    (map toEntries $ alfaSplit (M.toList $ auxDelete (foldr (M.unionWith (++)) M.empty dicts) (T.lines entries)))
  where
-    aux cl outpath (x:xs) =
-     TO.writeFile (combine outpath (cl++"-"++(take 7 $ T.unpack $ last $ T.splitOn "\t" x)++".dict"))
+    aux dir outpath (x:xs) =
+     TO.writeFile (combine outpath (getPath dir (getLemma x)))
      (T.append (T.intercalate "\n" (x:xs)) "\n")
 
 
 ---- corrigir lema
 
--- recebe o nome do diretório, a lista de arquivos do diretório e um lema,
--- retorna o path do arquivo correspondente ao lema
+getLemma :: T.Text -> Tp.Lemma
+getLemma entry = T.unpack $ head $ T.splitOn "+" $ last $ T.splitOn "\t" entry
+-- recebe o nome do diretório, e um lema, 
+-- encontra o arquivo correspondente a esse lema 
 -- >>>
-getPath :: Tp.Dir -> [FilePath] -> Tp.Lemma -> FilePath
-getPath dir (x:y:xs) lema
- |(dir ++ lema) < takeBaseName x = x
- |(takeBaseName x <= (dir ++ lema)) && ((dir ++ lema) < takeBaseName y) = x
- | otherwise = getPath dir (y:xs) lema
-getPath dir [y] lema = y
+getPath :: Tp.Dir -> Tp.Lemma -> FilePath
+getPath dir lema
+ | ([head lema] >= "a") && ([head lema] <= "z") = dir++"-"++[head lema]++".dict"
+ | elem [head lema] ["á","â","ã"] = dir++"-a.dict"
+ | elem [head lema] ["é","ê"] = dir++"-e.dict"
+ | elem [head lema] ["í"] = dir++"-i.dict"
+ | elem [head lema] ["ó","ô","õ"] = dir++"-o.dict"
+ | elem [head lema] ["ú"] = dir++"-u.dict"
+ | otherwise = ""
 
 auxCorLemma :: (Tp.Lemma,Tp.Lemma) -> [M.Map T.Text [(T.Text, T.Text)]] -> [[T.Text]]
 auxCorLemma (del,new) [m] = [toEntries $ M.toList $
@@ -139,24 +119,21 @@ corLemma :: FilePath -> (Tp.Lemma,Tp.Lemma) -> IO [()]
 corLemma dirPath (del,new) = do
   paths <- listDirectory dirPath
   let dir = head $ splitOn "-" $ head paths
-  dicts <- mapM (morphoMap . combine dirPath) (map (getPath dir (sort paths)) [del, new])
+  dicts <- mapM (morphoMap . combine dirPath) (nub $ map (getPath dir) [del, new])
   mapM (aux dirPath dir paths) (auxCorLemma (del,new) dicts)
  where
-    aux dirPath dir paths (x:xs)
-     | elem (dir++"-"++(take 7 $ T.unpack $ last $ T.splitOn "\t" x)++".dict") paths =
-      TO.writeFile (combine dirPath (dir++"-"++(take 7 $ T.unpack $ last $ T.splitOn "\t" x)++".dict"))
-      (T.append (T.intercalate "\n" (x:xs)) "\n")
-     | otherwise = do
-      TO.writeFile (combine dirPath (dir++"-"++(take 7 $ T.unpack $ last $ T.splitOn "\t" x)++".dict")) (T.append (T.intercalate "\n" (x:xs)) "\n")
-      removeFile (combine dirPath (getPath dir (sort paths) (T.unpack x)))
+    aux dirPath dir paths (x:xs) = 
+      TO.writeFile (combine dirPath (getPath dir (getLemma x))) (T.append (T.intercalate "\n" (x:xs)) "\n")
+
 
 ------- inserir entradas
 
+-- separa as regras que correspondem a cada pos
 getTags :: String -> FilePath -> IO [(T.Text, T.Text)]
 getTags dir tagsPath = do
   content <- readFile tagsPath
   return $ map (\s -> let p = T.splitOn "\t" s in (head p, last p)) (aux dir (lines content))
- where 
+ where
    aux dir (x:xs)
     |(dir == "verbs") && (take 2 x) == "+V" = T.pack x : aux dir xs
     |(dir == "nouns") && (take 2 x) == "+N" = T.pack x : aux dir xs
@@ -164,41 +141,34 @@ getTags dir tagsPath = do
     | otherwise = aux dir xs
    aux dir [] = []
 
+-- cria todas as flexões de um lema através das regras 
 flex :: Tp.Lemma -> [(T.Text, T.Text)] -> M.Map T.Text [(R.Regex,String)] -> [(T.Text,T.Text)]
 flex lemma tags rules =
    map (aux lemma rules) tags
- where 
+ where
    aux lemma rules (t,r) = ((head $ I.getRegForm (lemma++"\b") (fromJust $ M.lookup r rules)), t)
 
-auxNewLemma :: Tp.Lemma 
-  -> [(T.Text,T.Text)] 
+auxNewLemma :: Tp.Lemma
+  -> [(T.Text,T.Text)]
   -> M.Map T.Text [(R.Regex,String)]
-  -> [M.Map T.Text [(T.Text,T.Text)]]
-  -> [M.Map T.Text [(T.Text,T.Text)]]
-auxNewLemma lemma tags rules (x:y:xs)
- | ((fst $ head $ M.toList x) < (T.pack lemma)) && ((fst $ head $ M.toList y) > (T.pack lemma)) = 
-   M.insertWith (++) (T.pack lemma) (flex lemma tags rules) x : (y:xs)
- | ((fst $ head $ M.toList x) > (T.pack lemma)) =  
-   M.insertWith (++) (T.pack lemma) (flex lemma tags rules) x : (y:xs)
- | otherwise = x : auxNewLemma lemma tags rules (y:xs)
+  -> M.Map T.Text [(T.Text,T.Text)]
+  -> M.Map T.Text [(T.Text,T.Text)]
+auxNewLemma lemma tags rules = 
+  M.insertWith (++) (T.pack lemma) (flex lemma tags rules)
 
-newLemma :: FilePath -> Tp.Lemma -> IO [()]
+newLemma :: FilePath -> Tp.Lemma -> IO ()
 newLemma dirPath lemma = do
   paths <- listDirectory dirPath
   let dir = head $ splitOn "-" $ head paths
+  let path = getPath dir lemma
   tags <- getTags dir "../tags.dict"
   rules <- I.readRules "../irules.json"
-  dicts <- mapM (morphoMap . combine dirPath) paths
-  mapM (aux dirPath dir paths) 
-     (map (toEntries . M.toList) (auxNewLemma lemma tags rules dicts))
- where 
-   aux dirPath dir paths (x:xs)
-    | elem (dir++"-"++(take 7 $ T.unpack $ last $ T.splitOn "\t" x)++".dict") paths =
-      TO.writeFile (combine dirPath (dir++(take 7 $ T.unpack $ last $ T.splitOn "\t" x)++".dict"))
-      (T.append (T.intercalate "\n" (x:xs)) "\n")
-    | otherwise = do
-      TO.writeFile (combine dirPath (dir++"-"++(take 7 $ T.unpack $ last $ T.splitOn "\t" x)++".dict")) (T.append (T.intercalate "\n" (x:xs)) "\n")
-      removeFile (combine dirPath (getPath dir (sort paths) (T.unpack x)))
+  dict <- morphoMap (combine dirPath path)
+  aux dirPath dir path
+     (toEntries $ M.toList $ auxNewLemma lemma tags rules dict)
+ where
+   aux dirPath dir path xs =
+      TO.writeFile (combine dirPath path) (T.append (T.intercalate "\n" xs) "\n")
 
 
 ------ split por letras do alfabeto
@@ -213,27 +183,29 @@ alfaJoin :: [[(T.Text,[(T.Text,T.Text)])]] -> [[(T.Text,[(T.Text,T.Text)])]]
 alfaJoin xs = map (aux xs) xs
  where
    aux (x:xs) y
-    | elem ([T.head (fst $ head x)], [T.head (fst $ head y)]) 
+    | elem ([T.head (fst $ head x)], [T.head (fst $ head y)])
       [("a","á"),("e","é"),("í","i"),("o","ó"),("u","ú"),
       ( "a","â"),("e","ê"),("o","ô"),("a","ã"),("o","õ")] =  aux xs (y++x)
     | otherwise = aux xs y
    aux [] y = y
 
 alfaSplit :: [(T.Text,[(T.Text,T.Text)])] -> [[(T.Text,[(T.Text,T.Text)])]]
-alfaSplit = groupBy (\a b -> (T.head (fst a)) == (T.head (fst b))) 
+alfaSplit xs = alfaClean $ alfaJoin $ aux xs
+ where 
+   aux = groupBy (\a b -> (T.head (fst a)) == (T.head (fst b)))
 
 -- recebe path do diretório e path para escrever os novos arquivos
 -- separa as entradas usando como critério a primeira letra do lema
 -- >>>
 alfaOrder :: FilePath -> FilePath -> IO [()]
-alfaOrder dirPath outPath = do 
+alfaOrder dirPath outPath = do
   paths <- listDirectory dirPath
   let dir = head $ splitOn "-" $ head paths
   dicts <- mapM (morphoMap . combine dirPath) paths
   mapM (aux dirPath dir outPath)
-    ( map toEntries  (alfaClean $ alfaJoin $ alfaSplit (M.toList $ M.map (sortOn fst) (foldr (M.unionWith (++)) M.empty dicts))))
- where 
+    ( map toEntries (alfaSplit (M.toList $ M.map (sortOn fst) (foldr (M.unionWith (++)) M.empty dicts))))
+ where
   aux dirPath dir outPath (x:xs) =
-    TO.writeFile (combine outPath (dir++"-"++[T.head $ last $ T.splitOn "\t" x]++".dict"))
+    TO.writeFile (combine outPath (getPath dir (getLemma x)))
      (T.append (T.intercalate "\n" (x:xs)) "\n")
     
