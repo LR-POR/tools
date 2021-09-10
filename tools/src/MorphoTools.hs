@@ -200,6 +200,9 @@ newLemma dirPath lemma = do
       TO.writeFile (combine dirPath (dir++"-"++(take 7 $ T.unpack $ last $ T.splitOn "\t" x)++".dict")) (T.append (T.intercalate "\n" (x:xs)) "\n")
       removeFile (combine dirPath (getPath dir (sort paths) (T.unpack x)))
 
+
+------ split por letras do alfabeto
+
 alfaClean :: [[(T.Text,[(T.Text,T.Text)])]] -> [[(T.Text,[(T.Text,T.Text)])]]
 alfaClean (x:xs)
  |("a" <= [T.head (fst $ head x)]) && ("z" >= [T.head (fst $ head x)]) = x : alfaClean xs
@@ -219,6 +222,9 @@ alfaJoin xs = map (aux xs) xs
 alfaSplit :: [(T.Text,[(T.Text,T.Text)])] -> [[(T.Text,[(T.Text,T.Text)])]]
 alfaSplit = groupBy (\a b -> (T.head (fst a)) == (T.head (fst b))) 
 
+-- recebe path do diretório e path para escrever os novos arquivos
+-- separa as entradas usando como critério a primeira letra do lema
+-- >>>
 alfaOrder :: FilePath -> FilePath -> IO [()]
 alfaOrder dirPath outPath = do 
   paths <- listDirectory dirPath
