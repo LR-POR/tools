@@ -5,6 +5,7 @@ module MorphoTools where
 import qualified Type as Tp
 import qualified Irregs as I
 import Data.Either
+import Data.Char
 import System.IO
 import qualified Data.Map as M
 import System.Directory
@@ -185,14 +186,16 @@ alfaJoin xs = map (aux xs) xs
    aux (x:xs) y
     | elem ([T.head (fst $ head x)], [T.head (fst $ head y)])
       [("a","á"),("e","é"),("í","i"),("o","ó"),("u","ú"),
-      ( "a","â"),("e","ê"),("o","ô"),("a","ã"),("o","õ")] =  aux xs (y++x)
+       ("a","â"),("e","ê"),("o","ô"),("a","ã"),("o","õ"),
+       ("á","a"),("é","e"),("í","i"),("ó","o"),("ú","u"),
+       ("â","a"),("ê","e"),("ô","o"),("ã","a"),("õ","o")] =  aux xs (y++x)
     | otherwise = aux xs y
    aux [] y = y
 
 alfaSplit :: [(T.Text,[(T.Text,T.Text)])] -> [[(T.Text,[(T.Text,T.Text)])]]
 alfaSplit xs = alfaClean $ alfaJoin $ aux xs
  where 
-   aux = groupBy (\a b -> (T.head (fst a)) == (T.head (fst b)))
+   aux = groupBy (\a b -> (toLower $ T.head (fst a)) == (toLower $ T.head (fst b)))
 
 -- recebe path do diretório e path para escrever os novos arquivos
 -- separa as entradas usando como critério a primeira letra do lema
