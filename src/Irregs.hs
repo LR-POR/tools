@@ -3,7 +3,7 @@
 
 module Irregs where
 
-
+import Type
 import Data.Either
 import System.IO
 import qualified Data.Map as M
@@ -119,7 +119,7 @@ getRule tags m
 
 -- constrói um map do tipo lemma: [(form, regra)] ou seja, para cada lema estão associadas as 
 -- entradas que possuem o mesmo
-lemmaDict :: M.Map T.Text [T.Text] -> FilePath -> IO (M.Map T.Text [(T.Text, T.Text)])
+lemmaDict :: M.Map T.Text [T.Text] -> FilePath -> IO (MorphoMap)
 lemmaDict mtags path = do
   content <- TO.readFile path
   return $ M.fromListWith (++) $ aux mtags (T.lines content)
@@ -151,7 +151,7 @@ getRegForm lema [] = [T.pack lema]
 -- verifica se a forma é regular, se não for retorna a forma irregular e a regular que 
 -- foi construída pela regra
 -- rs :: lista com as formas regulares produzidas pela func getRegForm
-isRegular :: T.Text -> T.Text -> T.Text -> [T.Text] -> M.Map T.Text [(T.Text, T.Text)] -> [[T.Text]]
+isRegular :: T.Text -> T.Text -> T.Text -> [T.Text] -> MorphoMap -> [[T.Text]]
 isRegular forma lema regra rs morpho
  | elem forma rs = [[]]
  | elem (head rs,regra) (fromJust (M.lookup lema morpho)) 
@@ -170,7 +170,7 @@ getIrregs xs m =
 
 -- recebe dois paths, um com o diretório dos arquivos a serem verificados e outro onde serão 
 -- escritas as formas irregulares
-mkIrregsTab :: FilePath -> FilePath -> FilePath -> FilePath -> IO ()
+mkIrregsTab :: MorphoDirPath -> LexRulesPath -> MapTagsRulesPath -> OutPath -> IO ()
 mkIrregsTab dir rpath mpath outpath = do
   mtags <- tag2rule mpath
   paths <- listDirectory dir
