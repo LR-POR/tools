@@ -162,7 +162,9 @@ isRegular forma lema regra rs morpho
 -- e concatenando a saída
 getIrregs :: [(T.Text,[(T.Text,T.Text)])] -> M.Map T.Text [(R.Regex,String)] -> [[T.Text]]
 getIrregs xs m =
-  concatMap ((\k morpho (x,ys) -> concatMap (aux x k morpho) (nub ys)) m (M.fromList xs)) xs
+  concatMap 
+  ((\k morpho (x,ys) -> nub $ concatMap (aux x k morpho) (sortOn snd $ sortOn fst ys)) 
+   m (M.fromList xs)) xs
  where
    aux l m morpho (f,r) 
     | isNothing (M.lookup r m) = [[]] 
