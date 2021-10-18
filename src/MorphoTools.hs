@@ -73,21 +73,27 @@ auxDelete m [] = m
 -- recebe o path do diretório, path do arquivo com as entradas que vão ser apagadas e path de saída,
 -- atualiza todos os arquivos do diretório
 -- >>>
-delete :: FilePath -> FilePath -> FilePath -> IO [()]
-delete dirPath epath outpath = do
-  paths <- listDirectory dirPath
-  let dir = head $ splitOn "-" $ head paths
-  dicts <- mapM (morphoMap . combine dirPath) paths
+delete :: FilePath -> FilePath -> IO [()]
+delete dirpath epath = do
   entries <- TO.readFile epath
-  mapM (aux dir outpath)
+  dir <- getDir dirpath
+  let paths = nub $ map (\x -> getPath dir (getLemma x)) (T.lines entries)
+  dicts <- mapM (morphoMap . combine dirpath) paths
+  mapM (aux dir dirpath)
     (map toEntries $ alfaSplit (M.toList $ auxDelete (foldr (M.unionWith (++)) M.empty dicts) (T.lines entries)))
  where
-    aux dir outpath (x:xs) =
-     TO.writeFile (combine outpath (getPath dir (getLemma x)))
+    aux dir dirpath (x:xs) =
+     TO.writeFile (combine dirpath (getPath dir (getLemma x)))
      (T.append (T.intercalate "\n" (x:xs)) "\n")
 
 
 ---- corrigir lema
+
+getDir :: FilePath -> IO String
+getDir x = do
+  paths <- listDirectory x
+  return (head $ splitOn "-" $ head paths)
+ 
 
 getLemma :: T.Text -> Tp.Lemma
 getLemma entry = T.unpack $ head $ T.splitOn "+" $ last $ T.splitOn "\t" entry
@@ -118,12 +124,11 @@ auxCorLemma (del,new) [x,y]
 -- >>>
 corLemma :: FilePath -> (Tp.Lemma,Tp.Lemma) -> IO [()]
 corLemma dirPath (del,new) = do
-  paths <- listDirectory dirPath
-  let dir = head $ splitOn "-" $ head paths
+  dir <- getDir dirPath
   dicts <- mapM (morphoMap . combine dirPath) (nub $ map (getPath dir) [del, new])
-  mapM (aux dirPath dir paths) (auxCorLemma (del,new) dicts)
+  mapM (aux dirPath dir) (auxCorLemma (del,new) dicts)
  where
-    aux dirPath dir paths (x:xs) = 
+    aux dirPath dir (x:xs) = 
       TO.writeFile (combine dirPath (getPath dir (getLemma x))) (T.append (T.intercalate "\n" (x:xs)) "\n")
 
 
@@ -159,8 +164,7 @@ auxNewLemma lemma tags rules =
 
 newLemma :: FilePath -> Tp.Lemma -> IO ()
 newLemma dirPath lemma = do
-  paths <- listDirectory dirPath
-  let dir = head $ splitOn "-" $ head paths
+  dir <- getDir dirPath
   let path = getPath dir lemma
   tags <- getTags dir "../tags.dict"
   rules <- I.readRules "../irules.json"
