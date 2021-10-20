@@ -172,12 +172,12 @@ getIrregs xs m =
 
 -- recebe dois paths, um com o diretório dos arquivos a serem verificados e outro onde serão 
 -- escritas as formas irregulares
-mkIrregsTab :: FilePath -> FilePath -> FilePath -> FilePath -> IO ()
-mkIrregsTab dir rpath mpath outpath = do
-  mtags <- tag2rule mpath
+mkIrregsTab :: FilePath -> FilePath -> IO ()
+mkIrregsTab dir outpath = do
+  mtags <- tag2rule "etc/tags.dict"
   paths <- listDirectory dir
   dicts <- mapM ((lemmaDict mtags) . combine dir) paths
-  rules <- readRules rpath
+  rules <- readRules "etc/irules.json"
   TO.writeFile outpath (aux $ getIrregs (M.toList $ foldr (M.unionWith (++)) M.empty dicts) rules)
  where
    aux x = T.intercalate "\n" $ map (T.intercalate "\t") $ del x
