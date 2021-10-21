@@ -6,7 +6,8 @@ First you must have two libraries: joblib and conllu, so ou must get them
 
 Then you can work with the data in the following form:
 
-```from valences import *
+```
+from valences import *
 import joblib
 val = joblib.load('valences_dict.joblib')
 ```
