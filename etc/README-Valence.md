@@ -8,13 +8,12 @@ First you must have two libraries: joblib and conllu, so ou must get them
 
 Then you can work with the data in the following form:
 
-```
-from valences import *
-import joblib
-val = joblib.load('valences_dict.joblib')
-```
 
-*valences_dict.joblib* is a python dictionary, and its keys what I call valences, which basically are some pattern of deprels that a (set of) verbs satisfy. If you type
+    from valences import *
+    import joblib
+    val = joblib.load('valences-bosque.joblib')
+
+The *FILE.joblib* is a python dictionary, and its keys what I call valences, which basically are some pattern of deprels that a (set of) verbs satisfy. If you type
 
 Typing
 
