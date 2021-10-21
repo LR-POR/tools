@@ -525,6 +525,30 @@ def main():
         print(f'Done {100*i/len(d.keys()):.2f}',end='\r')
     joblib.dump(g,'valences_dict.joblib')
     print('Done second part...')
+    
+    
+def extract_valences(file_path):
+    verbs = {}
+    with open(file_path) as arq:
+        corpus = parse(arq.read())
+    for sentence in corpus:
+        for verb_index in get_verbs_index(sentence):
+            verb_lemma = sentence[verb_index]['lemma']
+            if verb_lemma not in verbs.keys():
+                verbs[verb_lemma] = Verb(lemma=verb_lemma,valences = [])
+            valence = get_valence(sentence,sentence[verb_index])
+            if valence is None:
+                continue
+            else:
+                verbs[verb_lemma].add_valence(valence)
+    g = {}
+    for verb in verbs.keys():
+        for valence in verbs[verb].valences:
+            if str(valence) not in g.keys():
+                g[str(valence)] = []
+            if verbs[verb] not in g[str(valence)]:
+                g[str(valence)].append(verbs[verb])
+    return g
 
 
 def dump(d,out):

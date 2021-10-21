@@ -96,7 +96,13 @@ valence.aux_pass.
 
 ## How to collect data from a new dataset?
 
-TODO
+In order to extract valences from a given dataset, it must be in the Universal Dependencies form (.conllu). Then you must run
 
+
+```
+from valences import extract_valences
+d = extract_valences('file_path.conllu')
+
+```
 ## Dump results
 
