@@ -86,12 +86,7 @@ val['<nsubj,VERB,obj>'][0].valences[1]
 
 One can access the sentence by typing
 
-```
-val['<nsubj,VERB,obj>'][0].valences[1].example
-```
-
-And the output is
-
+    > val['<nsubj,VERB,obj>'][0].valences[1].example
     'Daniel Blaufuks apresenta um trabalho ...
 	...
 
