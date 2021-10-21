@@ -7,8 +7,10 @@ DEPRELS = ['nsubj','obj','iobj','xcomp','ccomp','csubj','expl','nsubj:pass','aux
 ## Funçoes auxiliares
 
 def binary_search(x,l):
-    """
-    Esse algorítmo é o algorítmo de busca binária, mas ele retorna qual o índice o qual devo colocar o elemento para que a lista permaneça ordenada.
+    """ Esse algorítmo é o algorítmo de busca binária, mas ele retorna
+    qual o índice o qual devo colocar o elemento para que a lista
+    permaneça ordenada.
+
     Input: elemento x e lista l
     Output: Índice em que o elemento deve ser inserido para manter a ordenação da lista
     """
@@ -23,15 +25,15 @@ def binary_search(x,l):
     return up
 
 def convert_token_to_relation(sentence,token):
-    """
-    Converte um objeto do tipo token da biblioteca conllu em um objeto do tipo Relation criado aqui
+    """ Converte um objeto do tipo token da biblioteca conllu em um objeto
+    do tipo Relation criado aqui
     """
     return Relation(sentence,token)
 
 
 class Relation:
-    """
-    Objeto do tipo relation, tem basicamente as informações do token e também de seus filhos que nos interessam (case e mark)
+    """ Objeto do tipo relation, tem basicamente as informações do token e
+    também de seus filhos que nos interessam (case e mark)
     """
     def __init__(self,sentence,token):
         self.token = token['form']
@@ -54,9 +56,10 @@ class Relation:
     
 
 class Valence:
-    """
-    Objeto do tipo valencia, que guarda as infos específicas de um determinado verbo em uma determinada sentença, como seu xcomp, ccomp, obj etc. caso haja.
-    Possui um método print para imprimir as informaçoes da valência do verbo.
+    """ Objeto do tipo valencia, que guarda as infos específicas de um
+    determinado verbo em uma determinada sentença, como seu xcomp,
+    ccomp, obj etc. caso haja.  Possui um método print para imprimir
+    as informaçoes da valência do verbo.
     """
     def __init__(self,
                  token,
@@ -290,9 +293,6 @@ class Verb:
         #s = f"{lemma}:{self.metadata['mood']}+{self.metadata['Number']}+{self.metadata['Person']}+{self.metadata['Tense']}+{self.metadata['VerbForm']}\n"
         #if rels in self.rel.keys():
             
-            
-            
-        
         #return None
 
 
@@ -526,6 +526,13 @@ def main():
     joblib.dump(g,'valences_dict.joblib')
     print('Done second part...')
 
+
+def dump(d,out):
+    with open(out, 'w') as f:
+        for val in d.keys():
+            for v in d[val]:
+                print(val,v, file = f)
+            
 
 if __name__ == "__main__":
     main()
