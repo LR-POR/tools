@@ -2,7 +2,9 @@
 
 First you must have two libraries: joblib and conllu, so ou must get them
 
-``` pip install conllu joblib```
+    python3 -m venv venv
+    pip -r requirements.txt
+	
 
 Then you can work with the data in the following form:
 
@@ -133,7 +135,8 @@ And the output is
 'Daniel Blaufuks apresenta um trabalho construído a partir de imagens previamente existentes, o que situa este trabalho na linha das mais recentes preocupações do autor (a questão da perda de referência das imagens fotográficas, o trabalho sobre a simulação), não deixando contudo de estar sempre presente o registo poético, em parte autobiográfico, que sempre o caracterizou:'
 ```
 
-
-
 If there are deprels such as nsubj:pass or aux:pass in the valence object, one can access by typing valence.nsubj_pass or valence.aux_pass. 
 
+## How to collect data from a new dataset?
+
+TODO
