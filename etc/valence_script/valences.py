@@ -87,22 +87,93 @@ class Valence:
         self.nsubj_pass = nsubj_pass
         self.aux_pass = aux_pass
         self.example = example
-        self.rel_set = rel_set
+        self.rel_set = []
+        rel_string = ''
+        if self.obj is not None:
+            obj = 'obj'
+            obj_complement = ''
+            if len(self.obj.keys()) > 0:
+                val = list(self.obj.keys())[0]
+                rel = self.obj[val]
+                if len(rel.relation) > 0:
+                    for relation in rel.relation:
+                        if relation.upos == 'ADP':
+                            obj_complement += f':{relation.lemma}'
+                            break
+            obj += obj_complement
+            self.rel_set.append(obj)
+        if self.iobj is not None:
+            iobj = 'iobj'
+            iobj_complement = ''
+            if len(self.iobj.keys()) > 0:
+                val = list(self.iobj.keys())[0]
+                rel = self.iobj[val]
+                if len(rel.relation) > 0:
+                    for relation in rel.relation:
+                        if relation.upos == 'ADP':
+                            iobj_complement += f':{relation.lemma}'
+            iobj += iobj_complement            
+            self.rel_set.append(iobj)
+        if self.ccomp is not None:
+            ccomp = 'ccomp'
+            ccomp_complement = ''
+            if len(self.ccomp.keys()) > 0:
+                val = list(self.ccomp.keys())[0]
+                rel = self.ccomp[val]
+                for relation in rel.relation:
+                    if relation.upos == 'SCONJ':
+                        ccomp_complement += f':{relation.lemma}'
+                        break
+                if val == 'VERB':
+                    if 'Mood' in rel.metadata.keys():
+                        ccomp_complement += f"+{rel.metadata['Mood']}"
+            if len(ccomp_complement) > 0 and ccomp_complement[0] == '+':
+                ccomp_complement = ':' + ccomp_complement[1:]
+            ccomp+=ccomp_complement
+            self.rel_set.append(ccomp)
+        if self.xcomp is not None:
+            xcomp = 'xcomp'
+            xcomp_complement = ''
+            if len(self.xcomp.keys()) > 0:
+                val = list(self.xcomp.keys())[0]
+                rel = self.xcomp[val]
+                for relation in rel.relation:
+                    if relation.upos == 'SCONJ':
+                        xcomp_complement += f':{relation.lemma}'
+                if val == 'VERB':
+                    if 'VerbForm' in rel.metadata.keys():
+                        xcomp_complement += f'+{rel.metadata["VerbForm"]}'
+            if len(xcomp_complement) > 0 and xcomp_complement[0] == '+':
+                xcomp_complement = ':' + xcomp_complement[1:]
+            xcomp += xcomp_complement
+            self.rel_set.append(xcomp)
+        if self.csubj is not None:
+            self.rel_set.append('csubj')
+        if self.expl is not None:
+            self.rel_set.append('expl')
+            
+        if self.aux_pass is not None or self.nsubj_pass is not None or (self.metadata is not None and 'Voice' in self.metadata.keys() and self.metadata['Voice'] == 'Pass'):
+            verb_state = 'VERB:pass'
+        else:
+            verb_state = 'VERB:act'
+        
+        self.rel_set.sort()
+        if self.nsubj_pass is not None or self.nsubj is not None:
+            self.rel_set = ['nsubj'] + self.rel_set
+        self.rel_set = [verb_state] + self.rel_set
+        
+        s = '<'
+        for string in self.rel_set:
+            s+=string+','
+        s = s[:-1] + '>'
+        self.valence_category = s
         
         
     def __repr__(self):
-        s = '<'
-        for val in self.rel_set:
-            s += f'{val},'
-        s = s[:-1] + '>'
-        return s
+        return self.valence_category
     
     def __str__(self):
-        s = '<'
-        for val in self.rel_set:
-            s += f'{val},'
-        s = s[:-1] + '>'
-        return s
+        return self.valence_category
     
     def print(self):
         verb = f'{self.lemma}'
