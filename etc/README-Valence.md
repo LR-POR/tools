@@ -96,4 +96,12 @@ valence.aux_pass.
 
 ## How to collect data from a new dataset?
 
-TODO
+To collect data from a dataset, you must have it in the UD form. Then you do the following
+
+```
+from valences import extract_valences
+
+d = extract_valences(file_path)
+```
+
+The result is a dicitonary whose keys are the valences. 

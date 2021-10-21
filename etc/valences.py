@@ -493,6 +493,35 @@ def get_valence(sentence,token):
                    aux_pass = aux_pass,
                    example=sentence.metadata['text'],
                    rel_set = get_rel_set(sentence,token))
+
+
+def extract_valences(file):
+    verbs = {}
+    with open(file) as arq:
+        corpus = parse(arq.read())
+        
+    for sentence in corpus:
+        for verb_index in get_verbs_index(sentence):
+            verb_lemma = sentence[verb_index]['lemma']
+            if verb_lemma not in verbs.keys():
+                verbs[verb_lemma] = Verb(lemma=verb_lemma,valences = [])
+            valence = get_valence(sentence,sentence[verb_index])
+            if valence is None:
+                continue
+            else:
+                verbs[verb_lemma].add_valence(valence)
+    d = verbs
+    g = {}
+    i=0
+    for verb in d.keys():
+        for valence in d[verb].valences:
+            if str(valence) not in g.keys():
+                g[str(valence)] = []
+            if d[verb] not in g[str(valence)]:
+                g[str(valence)].append(d[verb])
+        i+=1
+    return g
+    
             
             
 def main():
