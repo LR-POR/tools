@@ -94,6 +94,9 @@ If there are deprels such as nsubj:pass or aux:pass in the valence
 object, one can access by typing valence.nsubj_pass or
 valence.aux_pass.
 
+You can also access the relations contained in a valence object by just iterationg over the object class.
+
+
 ## How to collect data from a new dataset?
 
 In order to extract valences from a given dataset, it must be in the Universal Dependencies form (.conllu). Then you must run
