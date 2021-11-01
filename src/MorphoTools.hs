@@ -166,8 +166,8 @@ newLemma :: FilePath -> Tp.Lemma -> IO ()
 newLemma dirPath lemma = do
   dir <- getDir dirPath
   let path = getPath dir lemma
-  tags <- getTags dir "../tags.dict"
-  rules <- I.readRules "../irules.json"
+  tags <- getTags dir "etc/tags.dict"
+  rules <- I.readRules "etc/irules.json"
   dict <- morphoMap (combine dirPath path)
   aux dirPath dir path
      (toEntries $ M.toList $ auxNewLemma lemma tags rules dict)
@@ -215,4 +215,30 @@ alfaOrder dirPath outPath = do
   aux dirPath dir outPath (x:xs) =
     TO.writeFile (combine outPath (getPath dir (getLemma x)))
      (T.append (T.intercalate "\n" (x:xs)) "\n")
-    
+
+correct :: T.Text -> T.Text
+correct entry = do
+  let form = head $ T.splitOn "\t" entry
+  let fs = map (T.splitOn (T.pack ".")) (T.splitOn "+" (last $ T.splitOn "\t" entry)) :: [[T.Text]]
+  T.append form (T.append "\t" (auxSplit fs))
+ where 
+   auxSplit :: [[T.Text]] -> T.Text
+   auxSplit (x:xs) 
+    |length(x)>1 = 
+      T.intercalate "+" ([(head x),T.pack "V", T.intercalate "." (tail x)]:xs)
+    |(head $ head xs) /= (T.pack "V") = 
+      T.intercalate "+" ((head x)++[T.pack "V",T.intercalate "." (head xs)]:(tail xs))
+    |otherwise = 
+      T.intercalate "+" ((head x)++(map (T.intercalate ".") xs))
+
+
+clitics :: FilePath -> FilePath -> IO [()]
+clitics dirpath outpath = do
+  paths <- listDirectory dirpath
+  mapM (aux dirpath outpath) paths
+ where
+   aux dirpath outpath path = do
+    dict <- TO.readFile $ combine dirpath path
+    TO.writeFile (combine outpath path) 
+      (T.append (T.intercalate "\n" $ map correct (T.lines dict)) "\n") 
+
