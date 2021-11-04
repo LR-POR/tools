@@ -149,6 +149,13 @@ corAsseis dir outpath = do
      (T.append (T.intercalate "\n" (x:xs)) "\n")
 
 
+filt :: [FilePath] -> [FilePath]
+filt (x:xs)
+ | x == "README" = filt xs
+ | otherwise = x : filt xs
+filt [] = []
+
+
 -- corrige casos do tipo 
 -- aba-nos	abar+nós.AD.1.PL+PRS+2+SG -> aba-nos	abar+V.nós.AD.1.PL+PRS+2+SG
 auxAddVtag :: T.Text -> T.Text
@@ -164,12 +171,6 @@ auxAddVtag entry = do
     |otherwise = 
       T.intercalate "+" ((x)++(map (T.intercalate ".") xs))
 
-filt :: [FilePath] -> [FilePath]
-filt (x:xs)
- | x == "README" = filt xs
- | otherwise = x : filt xs
-filt [] = []
-
 addVtag :: FilePath -> FilePath -> IO [()]
 addVtag dirpath outpath = do
   paths <- listDirectory dirpath
@@ -179,4 +180,29 @@ addVtag dirpath outpath = do
     dict <- TO.readFile $ combine dirpath path
     TO.writeFile (combine outpath path) 
       (T.append (T.intercalate "\n" $ map auxAddVtag (T.lines dict)) "\n") 
+
+
+-- troca a tag PTPASS por PTPST
+auxptpass2ptpst :: T.Text -> T.Text
+auxptpass2ptpst entry = do 
+  let form = head $ T.splitOn "\t" entry
+  let fs = map (T.splitOn (T.pack ".")) (T.splitOn "+" (last $ T.splitOn "\t" entry))
+  T.append form (T.append "\t" (T.intercalate "+" (map (T.intercalate ".") (aux fs))))
+ where 
+   aux (x:xs)
+    | head x == T.pack "PTPASS" = [T.pack "PTPST"] : aux xs
+    | otherwise = x : aux xs
+   aux [] = []
+    
+ptpass2ptpst :: FilePath -> IO [()]
+ptpass2ptpst dirpath = do
+  paths <- listDirectory dirpath
+  mapM (aux dirpath) (filt paths)
+ where 
+   aux dirpath path = do
+     dict <- TO.readFile $ combine dirpath path
+     TO.writeFile (combine dirpath path)
+        (T.append (T.intercalate "\n" $ map auxptpass2ptpst (T.lines dict)) "\n")
+
+
 
