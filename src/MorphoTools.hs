@@ -216,35 +216,3 @@ alfaOrder dirPath outPath = do
     TO.writeFile (combine outPath (getPath dir (getLemma x)))
      (T.append (T.intercalate "\n" (x:xs)) "\n")
 
--- corrige casos do tipo 
--- aba-nos	abar+nós.AD.1.PL+PRS+2+SG -> aba-nos	abar+V.nós.AD.1.PL+PRS+2+SG
-correct :: T.Text -> T.Text
-correct entry = do
-  let form = head $ T.splitOn "\t" entry
-  let fs = map (T.splitOn (T.pack ".")) (T.splitOn "+" (last $ T.splitOn "\t" entry))
-  T.append form (T.append "\t" (auxSplit fs))
- where 
-   auxSplit :: [[T.Text]] -> T.Text
-   auxSplit (x:xs) 
-    |(head $ head xs) /= (T.pack "V") =  
-      T.intercalate "+" ([head x]++(map (T.intercalate ".") ([(T.pack "V"):(head xs)]++(tail xs))))
-      -- ([head x,T.pack "V"]++ (map (T.intercalate ".") xs)
-    |otherwise = 
-      T.intercalate "+" ((x)++(map (T.intercalate ".") xs))
-
-filt :: [FilePath] -> [FilePath]
-filt (x:xs)
- | x == "README" = filt xs
- | otherwise = x : filt xs
-filt [] = []
-
-clitics :: FilePath -> FilePath -> IO [()]
-clitics dirpath outpath = do
-  paths <- listDirectory dirpath
-  mapM (aux dirpath outpath) (filt paths)
- where
-   aux dirpath outpath path = do
-    dict <- TO.readFile $ combine dirpath path
-    TO.writeFile (combine outpath path) 
-      (T.append (T.intercalate "\n" $ map correct (T.lines dict)) "\n") 
-
