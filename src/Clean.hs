@@ -71,7 +71,6 @@ getEntries (x:xs) =
    aux = \x -> (fst x, T.splitOn "+" (snd x))
 getEntries [] = []
 
-
 mkMap :: FilePath -> IO (M.Map T.Text [(T.Text, T.Text)])
 mkMap path = do
   content <- TO.readFile path
@@ -79,14 +78,6 @@ mkMap path = do
  where
    aux xs = map (\s -> let p = (T.breakOn "+" (last $ T.splitOn "\t" s))
     in (fst p , [(head (T.splitOn "\t" s), last (T.splitOn "\t" s))])) xs
-
-{-
-sep :: [T.Text]  -> [T.Text]
-sep (x:xs) 
- | T.head x == '*' = sep xs
- | otherwise = [x] ++ sep xs
-errosSep [] = []
--}
 
 clean :: FilePath -> FilePath -> IO [()]
 clean dirPath outpath = do
@@ -113,7 +104,6 @@ checkDelete dir path = do
   aux map [] = []
 
 -- verifica se as formas analisadas existem nos cliticos
-
 clMap :: FilePath -> IO (M.Map T.Text [T.Text])
 clMap path = do
   content <- TO.readFile path
@@ -135,9 +125,7 @@ notClitic cdir entries outpath = do
    aux cmap [] = []
 
 
-
 -- corrigir entradas com sufixo -asseis para -ásseis
-
 auxCorAsseis :: [(T.Text,[(T.Text,T.Text)])] -> [(T.Text,[(T.Text,T.Text)])]
 auxCorAsseis xs =
   map (\(lema,ys) -> (lema, map aux ys)) xs
@@ -160,4 +148,35 @@ corAsseis dir outpath = do
      TO.writeFile (combine outpath ("verbs-"++(take 7 $ T.unpack $ fst $ T.breakOn "\t" x)++".dict"))
      (T.append (T.intercalate "\n" (x:xs)) "\n")
 
+
+-- corrige casos do tipo 
+-- aba-nos	abar+nós.AD.1.PL+PRS+2+SG -> aba-nos	abar+V.nós.AD.1.PL+PRS+2+SG
+auxAddVtag :: T.Text -> T.Text
+auxAddVtag entry = do
+  let form = head $ T.splitOn "\t" entry
+  let fs = map (T.splitOn (T.pack ".")) (T.splitOn "+" (last $ T.splitOn "\t" entry))
+  T.append form (T.append "\t" (aux fs))
+ where 
+   aux :: [[T.Text]] -> T.Text
+   aux (x:xs) 
+    |(head $ head xs) /= (T.pack "V") =  
+      T.intercalate "+" ([head x]++(map (T.intercalate ".") ([(T.pack "V"):(head xs)]++(tail xs))))
+    |otherwise = 
+      T.intercalate "+" ((x)++(map (T.intercalate ".") xs))
+
+filt :: [FilePath] -> [FilePath]
+filt (x:xs)
+ | x == "README" = filt xs
+ | otherwise = x : filt xs
+filt [] = []
+
+addVtag :: FilePath -> FilePath -> IO [()]
+addVtag dirpath outpath = do
+  paths <- listDirectory dirpath
+  mapM (aux dirpath outpath) (filt paths)
+ where
+   aux dirpath outpath path = do
+    dict <- TO.readFile $ combine dirpath path
+    TO.writeFile (combine outpath path) 
+      (T.append (T.intercalate "\n" $ map auxAddVtag (T.lines dict)) "\n") 
 
