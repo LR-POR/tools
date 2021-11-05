@@ -148,14 +148,6 @@ corAsseis dir outpath = do
      TO.writeFile (combine outpath ("verbs-"++(take 7 $ T.unpack $ fst $ T.breakOn "\t" x)++".dict"))
      (T.append (T.intercalate "\n" (x:xs)) "\n")
 
-
-filt :: [FilePath] -> [FilePath]
-filt (x:xs)
- | x == "README" = filt xs
- | otherwise = x : filt xs
-filt [] = []
-
-
 -- corrige casos do tipo 
 -- aba-nos	abar+nós.AD.1.PL+PRS+2+SG -> aba-nos	abar+V.nós.AD.1.PL+PRS+2+SG
 auxAddVtag :: T.Text -> T.Text
@@ -180,28 +172,3 @@ addVtag dirpath outpath = do
     dict <- TO.readFile $ combine dirpath path
     TO.writeFile (combine outpath path) 
       (T.append (T.intercalate "\n" $ map auxAddVtag (T.lines dict)) "\n") 
-
-
--- elimina entradas com a tag PTPASS
-auxdelptpass :: [T.Text] -> [T.Text]
-auxdelptpass entries = do 
-  let fs = map (T.splitOn "+") entries
-  map (T.intercalate "+") (aux fs)
- where 
-   aux (x:xs)
-    | elem (T.pack "PTPASS") x = aux xs
-    | otherwise = x : aux xs
-   aux [] = []
-    
-delptpass :: FilePath -> IO [()]
-delptpass dirpath = do
-  paths <- listDirectory dirpath
-  mapM (aux dirpath) (filt paths)
- where 
-   aux dirpath path = do
-     dict <- TO.readFile $ combine dirpath path
-     TO.writeFile (combine dirpath path)
-        (T.append (T.intercalate "\n" $ auxdelptpass (T.lines dict)) "\n")
-
-
-

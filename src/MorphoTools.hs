@@ -38,7 +38,7 @@ toEntries xs =  concatMap (\(a,b) ->  map (aux a) (nub b)) xs
    aux lema (forma,tags) =
      T.append forma (T.append "\t" (T.append lema tags))
 
------- apagar entradas 
+------ apagar entradas de verbos, adjetivos, substantivos ou advérbios
 
 auxCheckDup :: [(T.Text, T.Text)] -> T.Text -> [T.Text]
 auxCheckDup (x:xs) tags
@@ -71,7 +71,7 @@ auxDelete m (x:xs)
 auxDelete m [] = m
 
 -- recebe o path do diretório, path do arquivo com as entradas que vão ser apagadas e path de saída,
--- atualiza todos os arquivos do diretório
+-- atualiza os arquivos editados
 -- >>>
 delete :: FilePath -> FilePath -> IO [()]
 delete dirpath epath = do
@@ -85,6 +85,34 @@ delete dirpath epath = do
     aux dir dirpath (x:xs) =
      TO.writeFile (combine dirpath (getPath dir (getLemma x)))
      (T.append (T.intercalate "\n" (x:xs)) "\n")
+
+------ apagar entradas de cliticos
+
+filt :: [FilePath] -> [FilePath]
+filt (x:xs)
+ | x == "README" = filt xs
+ | otherwise = x : filt xs
+filt [] = []
+
+auxdelclitics :: [T.Text] -> [T.Text] -> [T.Text]
+auxdelclitics delentries (x:xs) 
+ | elem x delentries = auxdelclitics delentries xs
+ | otherwise = x : auxdelclitics delentries xs
+auxdelclitics delentries [] = []
+
+-- recebe o path do diretório e path do arquivo com as entradas que vão ser apagadas,
+-- atualiza todos os arquivos do diretório
+-- >>>
+delclitics :: FilePath -> FilePath -> IO [()]
+delclitics dirpath epath = do
+  elist <- TO.readFile epath
+  paths <- listDirectory dirpath
+  mapM (aux (T.lines elist) dirpath) (filt paths)
+ where 
+   aux delentries dirpath path = do
+     dict <- TO.readFile $ combine dirpath path
+     TO.writeFile (combine dirpath path)
+        (T.append (T.intercalate "\n" $ auxdelclitics delentries (T.lines dict)) "\n")
 
 
 ---- corrigir lema
