@@ -182,27 +182,26 @@ addVtag dirpath outpath = do
       (T.append (T.intercalate "\n" $ map auxAddVtag (T.lines dict)) "\n") 
 
 
--- troca a tag PTPASS por PTPST
-auxptpass2ptpst :: T.Text -> T.Text
-auxptpass2ptpst entry = do 
-  let form = head $ T.splitOn "\t" entry
-  let fs = map (T.splitOn (T.pack ".")) (T.splitOn "+" (last $ T.splitOn "\t" entry))
-  T.append form (T.append "\t" (T.intercalate "+" (map (T.intercalate ".") (aux fs))))
+-- elimina entradas com a tag PTPASS
+auxdelptpass :: [T.Text] -> [T.Text]
+auxdelptpass entries = do 
+  let fs = map (T.splitOn "+") entries
+  map (T.intercalate "+") (aux fs)
  where 
    aux (x:xs)
-    | head x == T.pack "PTPASS" = [T.pack "PTPST"] : aux xs
+    | elem (T.pack "PTPASS") x = aux xs
     | otherwise = x : aux xs
    aux [] = []
     
-ptpass2ptpst :: FilePath -> IO [()]
-ptpass2ptpst dirpath = do
+delptpass :: FilePath -> IO [()]
+delptpass dirpath = do
   paths <- listDirectory dirpath
   mapM (aux dirpath) (filt paths)
  where 
    aux dirpath path = do
      dict <- TO.readFile $ combine dirpath path
      TO.writeFile (combine dirpath path)
-        (T.append (T.intercalate "\n" $ map auxptpass2ptpst (T.lines dict)) "\n")
+        (T.append (T.intercalate "\n" $ auxdelptpass (T.lines dict)) "\n")
 
 
 
