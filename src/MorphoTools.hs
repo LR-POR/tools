@@ -243,4 +243,25 @@ alfaOrder dirPath outPath = do
   aux dirPath dir outPath (x:xs) =
     TO.writeFile (combine outPath (getPath dir (getLemma x)))
      (T.append (T.intercalate "\n" (x:xs)) "\n")
-    
+
+auxCliticAO :: String -> FilePath -> [FilePath] -> [T.Text] -> IO ()
+auxCliticAO dir outPath paths (x:xs)
+ | elem (getPath dir (getLemma x)) paths = 
+   TO.appendFile (combine outPath (getPath dir (getLemma x)))
+     (T.append (T.intercalate "\n" (x:xs)) "\n")
+ | otherwise = 
+   TO.writeFile (combine outPath (getPath dir (getLemma x)))
+     (T.append (T.intercalate "\n" (x:xs)) "\n")
+
+
+clitcAlfaOrder :: FilePath -> FilePath -> IO [[()]]
+clitcAlfaOrder dirPath outPath = do
+  paths <- listDirectory dirPath
+  let dir = head $ splitOn "-" $ head paths
+  mapM (aux dirPath dir outPath) (filt paths)
+ where 
+   aux dirPath dir outPath path = do 
+    dic <- morphoMap $ combine dirPath path
+    paths <- listDirectory outPath
+    mapM (auxCliticAO dir outPath paths) (map toEntries (alfaSplit $ M.toList dic))
+
