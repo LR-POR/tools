@@ -40,7 +40,7 @@ class Relation:
         self.lemma = token['lemma']
         self.deprel = token['deprel']
         self.upos = token['upos']
-        self.metadata=token['feats']
+        self.feats=token['feats']
         self.relation = []
         son_tokens = get_son_tokens(sentence,token)
         if son_tokens != []:
@@ -64,7 +64,7 @@ class Valence:
     def __init__(self,
                  token,
                  lemma=None,
-                 metadata=None, 
+                 feats=None, 
                  xcomp=None,
                  ccomp=None,
                  obj=None,
@@ -79,7 +79,7 @@ class Valence:
         
         self.token = token
         self.lemma = lemma
-        self.metadata = metadata
+        self.feats = feats
         self.xcomp = xcomp
         self.ccomp = ccomp
         self.obj = obj
@@ -128,8 +128,8 @@ class Valence:
                         ccomp_complement += f':{relation.lemma}'
                         break
                 if val == 'VERB':
-                    if 'Mood' in rel.metadata.keys():
-                        ccomp_complement += f"+{rel.metadata['Mood']}"
+                    if 'Mood' in rel.feats.keys():
+                        ccomp_complement += f"+{rel.feats['Mood']}"
             if len(ccomp_complement) > 0 and ccomp_complement[0] == '+':
                 ccomp_complement = ':' + ccomp_complement[1:]
             ccomp+=ccomp_complement
@@ -144,8 +144,8 @@ class Valence:
                     if relation.upos == 'SCONJ':
                         xcomp_complement += f':{relation.lemma}'
                 if val == 'VERB':
-                    if 'VerbForm' in rel.metadata.keys():
-                        xcomp_complement += f'+{rel.metadata["VerbForm"]}'
+                    if 'VerbForm' in rel.feats.keys():
+                        xcomp_complement += f'+{rel.feats["VerbForm"]}'
             if len(xcomp_complement) > 0 and xcomp_complement[0] == '+':
                 xcomp_complement = ':' + xcomp_complement[1:]
             xcomp += xcomp_complement
@@ -155,7 +155,7 @@ class Valence:
         if self.expl is not None:
             self.rel_set.append('expl')
             
-        if self.aux_pass is not None or self.nsubj_pass is not None or (self.metadata is not None and 'Voice' in self.metadata.keys() and self.metadata['Voice'] == 'Pass'):
+        if self.aux_pass is not None or self.nsubj_pass is not None or (self.feats is not None and 'Voice' in self.feats.keys() and self.feats['Voice'] == 'Pass'):
             verb_state = 'VERB:pass'
         else:
             verb_state = 'VERB:act'
@@ -171,6 +171,9 @@ class Valence:
         s = s[:-1] + '>'
         self.valence_category = s
         
+    def __getitem__(self,item):
+        return self.rel_set[item]
+    
         
     def __repr__(self):
         return self.valence_category
@@ -182,8 +185,8 @@ class Valence:
         verb = f'{self.lemma}'
         mdata = ''
         for key in ['Mood','Number','Person','Tense','VerbForm']:
-            if key in self.metadata:
-                mdata+=f'+{key}:{self.metadata[key]}'
+            if key in self.feats:
+                mdata+=f'+{key}:{self.feats[key]}'
         mdata = mdata + " "
         verb+=mdata
         if self.xcomp is not None:
@@ -191,8 +194,8 @@ class Valence:
             if self.xcomp[val].upos in ('VERB'):
                 xcomp = f"xcomp {val}+{self.xcomp[val].lemma}"
                 for key in ['Mood','Number','Person','Tense','VerbForm']:
-                    if key in self.xcomp[val].metadata:
-                        xcomp += f'+{key}:{self.xcomp[val].metadata[key]}'
+                    if key in self.xcomp[val].feats:
+                        xcomp += f'+{key}:{self.xcomp[val].feats[key]}'
                 xcomp += ' '
                 for t in self.xcomp[val].relation:
                     xcomp += f'{t.deprel}+{t.upos}+{t.lemma} '
@@ -211,8 +214,8 @@ class Valence:
             if self.ccomp[val].upos in ('VERB'):
                 ccomp = f"ccomp {val}+{self.ccomp[val].lemma}"
                 for key in ['Mood','Number','Person','Tense','VerbForm']:
-                    if key in self.ccomp[val].metadata:
-                        ccomp += f'+{key}:{self.ccomp[val].metadata[key]}'
+                    if key in self.ccomp[val].feats:
+                        ccomp += f'+{key}:{self.ccomp[val].feats[key]}'
                 ccomp += ' '
                 for t in self.ccomp[val].relation:
                     ccomp += f'{t.deprel}+{t.upos}+{t.lemma} '
@@ -246,8 +249,8 @@ class Valence:
             if 'AUX' in self.aux_pass.keys():
                 aux = f"aux:pass:{self.aux_pass['AUX'].lemma}"
                 for key in ['Mood','Number','Person','Tense','VerbForm']:
-                    if key in self.aux_pass['AUX'].metadata:
-                        aux += f"+{key}:{self.aux_pass['AUX'].metadata[key]}" 
+                    if key in self.aux_pass['AUX'].feats:
+                        aux += f"+{key}:{self.aux_pass['AUX'].feats[key]}" 
                 aux += ' '
             else:
                 aux += 'aux:pass '
@@ -257,8 +260,8 @@ class Valence:
             if 'PRON' in self.expl.keys():
                 expl = f"PRON+{self.expl['PRON'].token}+"
                 for key in ['Case','Gender','Number','Person','PronType']:
-                    if key in self.expl['PRON'].metadata:
-                        expl+=f"{self.expl['PRON'].metadata[key]}+"
+                    if key in self.expl['PRON'].feats:
+                        expl+=f"{self.expl['PRON'].feats[key]}+"
                 expl = expl[:-1]
                 verb += expl
         return verb
@@ -290,7 +293,7 @@ class Verb:
             s+=t + "\n"
         return s
     #def __repr__(self):
-        #s = f"{lemma}:{self.metadata['mood']}+{self.metadata['Number']}+{self.metadata['Person']}+{self.metadata['Tense']}+{self.metadata['VerbForm']}\n"
+        #s = f"{lemma}:{self.feats['mood']}+{self.feats['Number']}+{self.feats['Person']}+{self.feats['Tense']}+{self.feats['VerbForm']}\n"
         #if rels in self.rel.keys():
             
         #return None
@@ -348,124 +351,7 @@ def get_deprel(sentence,token,deprel):
         for deprel_ in deprels:
             result_dic[deprel_['upos']] = Relation(sentence,deprel_)
         return result_dic
-
-def get_obj(sentence,token, iobj = False):
-    son_tokens = get_son_tokens(sentence,token)
-    son_tokens_deprel = [x['deprel'] for x in son_tokens]
-    result_dic = {}
-    if iobj:
-        if 'iobj' not in son_tokens_deprel:
-            return None
-        else:
-            iobjs = [x for x,y in zip(son_tokens,son_tokens_deprel) if y == 'iobj']
-            for iobj_ in iobjs:
-                #iobj_son_tokens = get_son_tokens(sentence,iobj_)
-                #cases = [x for x in iobj_son_tokens]
-                #result = [Relation(token = x['form'],lemma = x['lemma'],deprel = x['deprel'],upos = x['upos'], metadata = x['feats']) for x in cases]
-                result_dic[iobj_['upos']] = Relation(sentence,iobj_)
-            return result_dic
-    else:
-        if 'obj' not in son_tokens_deprel:
-            return None
-        else:
-            objs = [x for x,y in zip(son_tokens,son_tokens_deprel) if y == 'obj']
-            for obj_ in objs:
-                #obj_son_tokens = get_son_tokens(sentence,obj_)
-                #cases = [x for x in obj_son_tokens]
-                #result = [Relation(token = x['form'],lemma = x['lemma'],deprel = x['deprel'],upos = x['upos'], metadata = x['feats']) for x in cases]
-                result_dic[obj_['upos']] = Relation(sentence,iobj_)
-            return result_dic        
-        
-def get_ccomp(sentence,token):
-    son_tokens = get_son_tokens(sentence,token)
-    son_tokens_deprel = [x['deprel'] for x in son_tokens]
-    result_dic = {}
-    if 'ccomp' not in son_tokens_deprel:
-        return None
-    else:
-        ccomps = [x for x,y in zip(son_tokens,son_tokens_deprel) if y == 'ccomp']
-        for ccomp in ccomps:
-            ccomp_son_tokens = get_son_tokens(sentence,ccomp)
-            ccomp_son_tokens_deprel = [x['deprel'] for x in ccomp_son_tokens]
-            if 'mark' not in ccomp_son_tokens_deprel:
-                return 'There is no mark son of ccomp'
-            else:
-                marks = [x for x,y in zip(ccomp_son_tokens,ccomp_son_tokens_deprel) if y == 'mark']
-                result = [Relation(token = x['form'], lemma = x['lemma'], deprel = x['deprel'], upos = x['upos'], metadata = x['feats']) for x in marks]
-                result_dic[ccomp['upos']] = result
-        return result_dic
-    
-    
-def get_xcomp(sentence,token):
-    son_tokens = get_son_tokens(sentence,token)
-    son_tokens_deprel = [x['deprel'] for x in son_tokens]
-    result_dic = {}
-    if 'xcomp' not in son_tokens_deprel:
-        return None
-    else:
-        xcomps = [x for x,y in zip(son_tokens,son_tokens_deprel) if y == 'xcomp']
-        for xcomp in xcomps:
-            result_dic[xcomp['upos']] = {'atributes':Relation(token = xcomp['form'],lemma = xcomp['lemma'],deprel = xcomp['deprel'],upos = xcomp['upos'], metadata = xcomp['feats']),
-                                         'conjunctions':None}
-            xcomp_son_tokens = get_son_tokens(sentence,xcomp)
-            xcomp_son_tokens_deprel = [x['upos'] for x in xcomp_son_tokens]
-            if 'mark' not in xcomp_son_tokens:
-                continue
-            else:
-                marks = [x for x,y in zip(xcomp_son_tokens,xcomp_son_tokens_deprel) if y == 'mark']
-                result = [Relation(token = x['form'], lemma = x['lemma'], deprel = x['deprel'], upos = x['upos'], metadata = x['feats']) for x in marks]
-                resukt_dic[xcomp['upos']]['conjunctions'] = result
-        return result_dic
-    
-    
-def get_csubj(sentence,token):
-    son_tokens = get_son_tokens(sentence,token)
-    son_tokens_deprel = [x['deprel'] for x in son_tokens]
-    result_dic = {}
-    if 'csubj' not in son_tokens_deprel:
-        return None
-    else:
-        csubjs = [x for x,y in zip(son_tokens,son_tokens_deprel) if y == 'csubj']
-        for csubj in csubjs:
-            result_dic[csubj['upos']] = {'atributes':Relation(token = csubj['form'],lemma = csubj['lemma'],deprel = csubj['deprel'],upos = csubj['upos'], metadata = csubj['feats']),
-                                         'conjunctions':None}
-            csubj_son_tokens = get_son_tokens(sentence,csubj)
-            csubj_son_tokens_deprel = [x['upos'] for x in csubj_son_tokens]
-            if 'mark' not in csubj_son_tokens:
-                continue
-            else:
-                marks = [x for x,y in zip(csubj_son_tokens,csubj_son_tokens_deprel) if y == 'mark']
-                result = [Relation(token = x['form'], lemma = x['lemma'], deprel = x['deprel'], upos = x['upos'], metadata = x['feats']) for x in marks]
-                resukt_dic[xcomp['upos']]['conjunctions'] = result
-        return result_dic
-                
-def get_expl(sentence,token):
-    son_tokens = get_son_tokens(sentence,token)
-    son_tokens_deprel = [x['deprel'] for x in son_tokens]
-    result_dic = {}
-    if 'expl' not in son_tokens_deprel:
-        return None
-    else:
-        expls = [x for x,y in zip(son_tokens,son_tokens_deprel) if y == 'expl']
-        for expl in expls:
-            result_dic[expl['upos']] = Relation(token = expl['form'], lemma = expl['lemma'], deprel = expl['deprel'], upos = expl['upos'], metadata = expl['feats'])
-        return result_dic
-    
-
-def get_nsubj(sentence,token):
-    son_tokens = get_son_tokens(sentence,token)
-    son_tokens_deprel = [x['deprel'] for x in son_tokens]    
-    result_dic = {}
-    if 'nsubj' not in son_tokens_deprel:
-        return None
-    else:
-        nsubjs = [x for x,y in zip(son_tokens,son_tokens_deprel) if y == 'nsubj']
-        for nsubj in nsubjs:
-            result_dic[nsubj['upos']] = Relation(token = nsubj['form'],lemma=nsubj['lemma'],deprel = nsubj['deprel'], upos = nsubj['upos'], metadata = nsubj['feats'])
-        return result_dic
-    
-    
-   
+       
 
 def get_valence(sentence,token):
     obj = get_deprel(sentence,token,'obj')
@@ -481,7 +367,7 @@ def get_valence(sentence,token):
         return None
     return Valence(token = token['form'], 
                    lemma=token['lemma'],
-                   metadata=token['feats'], 
+                   feats=token['feats'], 
                    xcomp=xcomp,
                    ccomp=ccomp,
                    obj=obj,
