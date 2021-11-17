@@ -243,4 +243,24 @@ alfaOrder dirPath outPath = do
   aux dirPath dir outPath (x:xs) =
     TO.writeFile (combine outPath (getPath dir (getLemma x)))
      (T.append (T.intercalate "\n" (x:xs)) "\n")
-    
+
+
+auxAddEntries :: [[T.Text]] -> [T.Text] -> [T.Text]
+auxAddEntries (e:es) (x:xs) 
+ | (getLemma x) == getLemma (head e) = e ++ (auxAddEntries es (x:xs))
+ | otherwise = x : auxAddEntries (e:es) xs
+auxAddEntries (e:es) [] = []
+auxAddEntries [] (x:xs) = (x:xs)
+
+addEntries :: FilePath -> FilePath -> IO [()]
+addEntries dirpath epath = do
+  entries <- TO.readFile epath
+  dir <- getDir dirpath
+  let paths = nub $ map (\x -> getPath dir (getLemma x)) (T.lines entries)
+  mapM (aux (groupBy (\a b -> (getLemma a == getLemma b))  (T.lines entries)) dirpath) (filt paths)
+ where 
+   aux addentries dirpath path = do
+     dict <- TO.readFile $ combine dirpath path
+     TO.writeFile (combine dirpath path)
+        (T.append (T.intercalate "\n" $ auxAddEntries addentries (T.lines dict)) "\n")
+            
