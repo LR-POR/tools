@@ -123,9 +123,10 @@ class Valence:
             if len(self.ccomp.keys()) > 0:
                 val = list(self.ccomp.keys())[0]
                 rel = self.ccomp[val]
+                rel.relation.sort(key = lambda x: x.lemma)
                 for relation in rel.relation:
                     if relation.upos == 'SCONJ':
-                        ccomp_complement += f':{relation.lemma}'
+                        ccomp_complement += f'+{relation.lemma}'
                         break
                 if val == 'VERB':
                     if 'Mood' in rel.feats.keys():
@@ -140,9 +141,10 @@ class Valence:
             if len(self.xcomp.keys()) > 0:
                 val = list(self.xcomp.keys())[0]
                 rel = self.xcomp[val]
+                rel.relation.sort(key = lambda x: x.lemma)
                 for relation in rel.relation:
                     if relation.upos == 'SCONJ':
-                        xcomp_complement += f':{relation.lemma}'
+                        xcomp_complement += f'+{relation.lemma}'
                 if val == 'VERB':
                     if 'VerbForm' in rel.feats.keys():
                         xcomp_complement += f'+{rel.feats["VerbForm"]}'
