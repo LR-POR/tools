@@ -244,10 +244,25 @@ alfaOrder dirPath outPath = do
     TO.writeFile (combine outPath (getPath dir (getLemma x)))
      (T.append (T.intercalate "\n" (x:xs)) "\n")
 
+auxCheckAdd :: M.Map T.Text [(T.Text, T.Text)] -> [(T.Text,[(T.Text, T.Text)])] -> [(T.Text,[(T.Text, T.Text)])]
+auxCheckAdd m (e:es)
+ | elem (head $ snd e) (fromJust $ M.lookup (fst e) m) = auxCheckAdd m es
+ | otherwise = e : auxCheckAdd m es
+auxCheckAdd m [] = []
+
+-- entradas do MorphoBr -> candidatas a adicionar -> entradas que serão adicionadas
+checkAdd :: [T.Text] -> [T.Text] -> [T.Text]
+checkAdd morpho entries = do
+  let m = M.fromListWith (++) $ aux morpho
+  let e = aux entries
+  toEntries $ auxCheckAdd m e
+ where
+   aux xs = map (\s -> let p = (T.breakOn "+" (last $ T.splitOn "\t" s))
+    in (fst p , [(head (T.splitOn "\t" s), snd p)])) xs
 
 auxAddEntries :: [[T.Text]] -> [T.Text] -> [T.Text]
 auxAddEntries (e:es) (x:xs) 
- | (getLemma x) == getLemma (head e) = e ++ (auxAddEntries es (x:xs))
+ | (getLemma x) == getLemma (head e) = (checkAdd (x:xs) e) ++ (auxAddEntries es (x:xs))
  | otherwise = x : auxAddEntries (e:es) xs
 auxAddEntries (e:es) [] = []
 auxAddEntries [] (x:xs) = (x:xs)
