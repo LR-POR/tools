@@ -263,10 +263,13 @@ checkAdd morpho entries = do
 auxAddEntries :: [[T.Text]] -> [T.Text] -> [T.Text]
 auxAddEntries (e:es) (x:xs) 
  | (getLemma x) == getLemma (head e) = (checkAdd (x:xs) e) ++ (auxAddEntries es (x:xs))
+ | ((getLemma x) < (getLemma $ head e)) && ((getLemma $head xs) > (getLemma $ head e)) =
+    x:e ++ (auxAddEntries es xs)
  | otherwise = x : auxAddEntries (e:es) xs
 auxAddEntries (e:es) [] = []
 auxAddEntries [] (x:xs) = (x:xs)
 
+-- path do diretório do MorphoBr -> path das entradas que serão adicionadas
 addEntries :: FilePath -> FilePath -> IO [()]
 addEntries dirpath epath = do
   entries <- TO.readFile epath
