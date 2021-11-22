@@ -79,18 +79,20 @@ mkMap path = do
    aux xs = map (\s -> let p = (T.breakOn "+" (last $ T.splitOn "\t" s))
     in (fst p , [(head (T.splitOn "\t" s), last (T.splitOn "\t" s))])) xs
 
-clean :: FilePath -> FilePath -> IO [()]
-clean dirPath outpath = do
-  paths <- listDirectory dirPath
+-- elimina as entradas que se encaixam em regra1, regra2 ou regra3
+clean :: FilePath -> IO [()]
+clean dirpath = do
+  paths <- listDirectory dirpath
   let dir = head $ splitOn "-" $ head paths
-  dicts <- mapM (mkMap . combine dirPath) paths
-  mapM (aux outpath dir) (map getEntries $ alfaSplit (M.toList $ foldr (M.unionWith (++)) M.empty dicts))
+  dicts <- mapM (mkMap . combine dirpath) paths
+  mapM (aux dirpath dir) (map getEntries $ alfaSplit (M.toList $ foldr (M.unionWith (++)) M.empty dicts))
    where
-    aux outpath dir (x:xs) =
-     TO.writeFile (combine outpath (getPath dir (getLemma x)))
+    aux dirpath dir (x:xs) =
+     TO.writeFile (combine dirpath (getPath dir (getLemma x)))
      (T.append (T.intercalate "\n" (x:xs)) "\n")
 
--- verifica se as formas que vão ser excluídas tem um equivalente
+------ verifica se as formas que vão ser excluídas tem um equivalente
+
 checkDelete :: FilePath -> FilePath -> IO ()
 checkDelete dir path = do
   dpaths <- listDirectory dir
@@ -103,7 +105,8 @@ checkDelete dir path = do
    | otherwise = ["dup not found: " ++ (T.unpack x)] ++ aux map xs
   aux map [] = []
 
--- verifica se as formas analisadas existem nos cliticos
+------ verifica se as formas existem nos clíticos 
+
 clMap :: FilePath -> IO (M.Map T.Text [T.Text])
 clMap path = do
   content <- TO.readFile path
@@ -111,6 +114,7 @@ clMap path = do
  where
    aux xs = map (\s -> let p = (T.breakOn "-" s) in (fst p,[])) xs
 
+-- verifica se as formas analisadas existem nos cliticos
 notClitic :: FilePath -> FilePath -> FilePath -> IO ()
 notClitic cdir entries outpath = do
   cpaths <- listDirectory cdir
@@ -124,8 +128,8 @@ notClitic cdir entries outpath = do
     | otherwise = aux cmap xs
    aux cmap [] = []
 
+------ substitui -asseis por -ásseis
 
--- corrigir entradas com sufixo -asseis para -ásseis
 auxCorAsseis :: [(T.Text,[(T.Text,T.Text)])] -> [(T.Text,[(T.Text,T.Text)])]
 auxCorAsseis xs =
   map (\(lema,ys) -> (lema, map aux ys)) xs
@@ -137,19 +141,20 @@ auxCorAsseis xs =
       (T.pack $ R.subRegex (R.mkRegex "asseis\b") ((T.unpack forma)++"\b") "ásseis",tags)
     | otherwise = (forma,tags)
 
-corAsseis :: FilePath -> FilePath -> IO [()]
-corAsseis dir outpath = do
-  dpaths <- listDirectory dir
-  dicts <- mapM (morphoMap . combine dir) dpaths
-  mapM (aux outpath) 
+-- corrigir entradas com sufixo -asseis para -ásseis
+corAsseis :: FilePath -> IO [()]
+corAsseis dirpath = do
+  dpaths <- listDirectory dirpath
+  dicts <- mapM (morphoMap . combine dirpath) dpaths
+  mapM (aux dirpath) 
     (map toEntries $ alfaSplit $ auxCorAsseis $ M.toList $ foldr (M.unionWith (++)) M.empty dicts)
  where
-    aux outpath (x:xs) =
-     TO.writeFile (combine outpath ("verbs-"++(take 7 $ T.unpack $ fst $ T.breakOn "\t" x)++".dict"))
+    aux dirpath (x:xs) =
+     TO.writeFile (combine dirpath ("verbs-"++(take 7 $ T.unpack $ fst $ T.breakOn "\t" x)++".dict"))
      (T.append (T.intercalate "\n" (x:xs)) "\n")
 
--- corrige casos do tipo 
--- aba-nos	abar+nós.AD.1.PL+PRS+2+SG -> aba-nos	abar+V.nós.AD.1.PL+PRS+2+SG
+------ adiciona a tag V
+
 auxAddVtag :: T.Text -> T.Text
 auxAddVtag entry = do
   let form = head $ T.splitOn "\t" entry
@@ -163,12 +168,14 @@ auxAddVtag entry = do
     |otherwise = 
       T.intercalate "+" ((x)++(map (T.intercalate ".") xs))
 
-addVtag :: FilePath -> FilePath -> IO [()]
-addVtag dirpath outpath = do
+-- corrige casos do tipo 
+-- aba-nos	abar+nós.AD.1.PL+PRS+2+SG -> aba-nos	abar+V.nós.AD.1.PL+PRS+2+SG
+addVtag :: FilePath -> IO [()]
+addVtag dirpath = do
   paths <- listDirectory dirpath
-  mapM (aux dirpath outpath) (filt paths)
+  mapM (aux dirpath) (filt paths)
  where
-   aux dirpath outpath path = do
+   aux dirpath path = do
     dict <- TO.readFile $ combine dirpath path
-    TO.writeFile (combine outpath path) 
+    TO.writeFile (combine dirpath path) 
       (T.append (T.intercalate "\n" $ map auxAddVtag (T.lines dict)) "\n") 

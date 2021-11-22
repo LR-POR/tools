@@ -38,7 +38,7 @@ toEntries xs =  concatMap (\(a,b) ->  map (aux a) (nub b)) xs
    aux lema (forma,tags) =
      T.append forma (T.append "\t" (T.append lema tags))
 
------- apagar entradas de verbos, adjetivos, substantivos ou advérbios
+------ apagar entradas verificando se existe forma alternativa
 
 auxCheckDup :: [(T.Text, T.Text)] -> T.Text -> [T.Text]
 auxCheckDup (x:xs) tags
@@ -86,7 +86,7 @@ delete dirpath epath = do
      TO.writeFile (combine dirpath (getPath dir (getLemma x)))
      (T.append (T.intercalate "\n" (x:xs)) "\n")
 
------- apagar entradas de cliticos
+------ apagar entradas sem verificar se existe forma alternativa
 
 filt :: [FilePath] -> [FilePath]
 filt (x:xs)
@@ -94,17 +94,17 @@ filt (x:xs)
  | otherwise = x : filt xs
 filt [] = []
 
-auxdelclitics :: [T.Text] -> [T.Text] -> [T.Text]
-auxdelclitics delentries (x:xs) 
- | elem x delentries = auxdelclitics delentries xs
- | otherwise = x : auxdelclitics delentries xs
-auxdelclitics delentries [] = []
+auxdeleteF :: [T.Text] -> [T.Text] -> [T.Text]
+auxdeleteF delentries (x:xs) 
+ | elem x delentries = auxdeleteF delentries xs
+ | otherwise = x : auxdeleteF delentries xs
+auxdeleteF delentries [] = []
 
 -- recebe o path do diretório e path do arquivo com as entradas que vão ser apagadas,
 -- atualiza todos os arquivos do diretório
 -- >>>
-delclitics :: FilePath -> FilePath -> IO [()]
-delclitics dirpath epath = do
+deleteF :: FilePath -> FilePath -> IO [()]
+deleteF dirpath epath = do
   elist <- TO.readFile epath
   paths <- listDirectory dirpath
   mapM (aux (T.lines elist) dirpath) (filt paths)
@@ -112,7 +112,7 @@ delclitics dirpath epath = do
    aux delentries dirpath path = do
      dict <- TO.readFile $ combine dirpath path
      TO.writeFile (combine dirpath path)
-        (T.append (T.intercalate "\n" $ auxdelclitics delentries (T.lines dict)) "\n")
+        (T.append (T.intercalate "\n" $ auxdeleteF delentries (T.lines dict)) "\n")
 
 
 ---- corrigir lema
@@ -125,6 +125,7 @@ getDir x = do
 
 getLemma :: T.Text -> Tp.Lemma
 getLemma entry = T.unpack $ head $ T.splitOn "+" $ last $ T.splitOn "\t" entry
+
 -- recebe o nome do diretório, e um lema, 
 -- encontra o arquivo correspondente a esse lema 
 -- >>>
@@ -160,7 +161,7 @@ corLemma dirPath (del,new) = do
       TO.writeFile (combine dirPath (getPath dir (getLemma x))) (T.append (T.intercalate "\n" (x:xs)) "\n")
 
 
-------- inserir entradas
+------- inserir entradas geradas pelas regras da PorGram
 
 -- separa as regras que correspondem a cada pos
 getTags :: String -> FilePath -> IO [(T.Text, T.Text)]
