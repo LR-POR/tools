@@ -172,3 +172,26 @@ addVtag dirpath outpath = do
     dict <- TO.readFile $ combine dirpath path
     TO.writeFile (combine outpath path) 
       (T.append (T.intercalate "\n" $ map auxAddVtag (T.lines dict)) "\n") 
+
+
+isNegImp :: (T.Text,[T.Text]) -> Bool
+isNegImp (forma,tags) 
+ | (T.last forma == 's') && (elem (T.pack "IMP") tags) && (elem (T.pack "2") tags) = True
+ | otherwise = False
+
+auxDelNegImp :: [T.Text] -> [T.Text]
+auxDelNegImp (x:xs)
+ | isNegImp (head $ T.splitOn "\t" x, tail $ T.splitOn "+" x) = auxDelNegImp xs
+ | otherwise = x : auxDelNegImp xs
+auxDelNegImp [] = []
+
+-- recebe path do diretório de verbos do Morpho 
+delNegImp :: FilePath -> IO [()]
+delNegImp dirpath = do 
+  paths <- listDirectory dirpath
+  mapM (aux dirpath) paths
+ where
+   aux dirpath path = do
+    dict <- TO.readFile $ combine dirpath path
+    TO.writeFile (combine dirpath path) 
+      (T.append (T.intercalate "\n" $ auxDelNegImp (T.lines dict)) "\n") 
