@@ -8,10 +8,9 @@ First you must have two libraries: joblib and conllu, so ou must get them
 
 Then you can work with the data in the following form:
 
-
     > from valences import *
     > import joblib
-    > val = joblib.load('valences-bosque.joblib')
+    > val = joblib.load('bosque-X-Y.picke')
 
 The *FILE.joblib* is a python dictionary, and its keys what I call
 valences, which basically are some pattern of deprels that a (set of)
@@ -104,8 +103,10 @@ In order to extract valences from a given dataset, it must be in the Universal D
 
 ```
 from valences import extract_valences
+import joblib
+
 d = extract_valences('file_path.conllu')
+with open('bosque-master-20211210.pickle','wb') as f: joblib.dump(d, f)
 
 ```
-## Dump results
 
