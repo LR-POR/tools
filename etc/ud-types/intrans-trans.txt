@@ -1,0 +1,3 @@
+<VERB:act,nsubj>    nonrefl-int-verb-lex
+<VERB:act,nsubj,expl>   refl-int-verb-lex
+<VERB:act,nsubj,obj>   trans-verb-lex

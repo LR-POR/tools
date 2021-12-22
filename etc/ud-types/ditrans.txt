@@ -1,0 +1,2 @@
+<VERB:act,nsubj,iobj:a,obj> nom-acc-dat-ditransitive-verb-lex
+<VERB:act,nsubj,iobj:para,obj> nom-acc-goa-ditransitive-verb-lex
