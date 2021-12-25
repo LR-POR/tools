@@ -1,12 +1,15 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-# Author: Leonel Figueiredo de Alencar Date Dec. 21, 2021
+# Author: Leonel Figueiredo de Alencar 
+# Date: Dec. 21, 2021
 
 import os,sys,re
 import conllu, pickle, numpy
-from valences import *
 USER=os.path.expanduser("~")
-VALENCES = joblib.load(os.path.join(USER,"tools/etc/valence_script/valences_dict.joblib"))
+sys.path.append(os.path.join(USER, "scripts"))
+from valences import *
+PATH_TO_DICTIONARY=os.path.join(USER,"scripts/valences_dict.joblib")
+VALENCES = joblib.load(PATH_TO_DICTIONARY)
 FRAMES=list(VALENCES.keys())
 
 def parse_frame(frame):

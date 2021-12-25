@@ -1,19 +1,31 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-# Author: Leonel Figueiredo de Alencar Date Dec. 21, 2021
+# Author: Leonel Figueiredo de Alencar 
+# Date: Dec. 21, 2021
+
+"""This module extracts verbs from the UD Bosque treebank and constructs the corresponding lexical entries in TDL according to the given tables mapping UD valence frames to PorGram types.
+
+de Alencar, Leonel Figueiredo; Coutinho, Lucas Ribeiro; da Silva, Wellington José Leite; Nunes, Ana Luiza; Rademaker, Alexandre. Extracting valences from a dependency treebank for populating the verb lexicon of a Portuguese HPSG grammar. Proceedings of the 15th International Conference on Computational Processing of Portuguese (PROPOR 2022). Berlin: Springer, 2022. In preparation.
+"""
 
 import sys, os, re, pickle
+USER=os.path.expanduser("~")
+sys.path.append(os.path.join(USER, "scripts"))
 import PorGramEntries, ValenceExtractor
 from valences import *
-USER=os.path.expanduser("~")
 DIR1=os.path.join(USER, "hpsg/por")
 DIR2=os.path.join(USER, "hpsg/por/tmp")
+# list of the names of the files defining the mapping from UD valence frames to PorGram types 
+FILENAMES=['prep-obj-2ng-arg-verbs','clausal-verbs', 'intrans-trans', 'ditrans']
+# destination file of the created entries
+OUTFILE="bosque-entries.tdl"
 
-def build_mapping(filename="mapping02.txt"):
+def build_mapping(filename):
     return dict([re.split(r"\s+",line.strip()) for line in open(os.path.join(USER,DIR1,filename),"r").readlines() if line.strip() != ""])
 
-MAPPING=build_mapping()
+#MAPPING=build_mapping()
 
+# table mapping lexical identifiers to types in the existing TDL lexicon files 
 INFILE=os.path.join(USER, DIR2,"verbtypes142256.txt")
 
 LEXICON=PorGramEntries.MakeDictionary(PorGramEntries.ExtractEntries(INFILE))
@@ -53,7 +65,7 @@ def expand_lexicon(verb,verb_type,new_lexicon):
     else:
         new_lexicon[verb.lemma].add(verb_type)
   
-def build_lexicon(mapping=MAPPING,dative=True):
+def build_lexicon(mapping,dative=True):
     frames=list(mapping.keys())
     new_lexicon={}
     for frame in frames:
@@ -84,7 +96,7 @@ def collapse_dat_goa(lexicon):
             verbtypes.difference_update(dat_goa)
             verbtypes.add('nom-acc-rec-ditransitive-verb-lex')
 			
-def write_lexicon(new_lexicon,path_to_dir=DIR1, outfile="bosque-entries.tdl",old_lexicon=LEXICON):
+def write_lexicon(new_lexicon,path_to_dir=DIR1, outfile=OUTFILE,old_lexicon=LEXICON):
     outfile=os.path.join(path_to_dir,outfile)
     outfile=open(outfile,"w")
     lemmas=list(new_lexicon.keys())
@@ -104,17 +116,26 @@ def write_lexicon(new_lexicon,path_to_dir=DIR1, outfile="bosque-entries.tdl",old
                 index+=1
     outfile.close()
  
-def write_lexicons():
-    filenames=['prep-obj-2ng-arg-verbs','clausal-verbs', 'intrans-trans', 'ditrans']
+def build_lexicons(filenames=FILENAMES):
+    new_lexicons=[]
     for filename in filenames:
         infile=f"{filename}.txt"
         outfile=f"{filename}.pkl"
         mapping=build_mapping(infile)
         new_lexicon=build_lexicon(mapping)
-        save_lexicon(new_lexicon,outfile)
+        #save_lexicon(new_lexicon,outfile)
+        new_lexicons.append(new_lexicon)
+    return new_lexicons
+        
+def main(filenames=FILENAMES,outfile=OUTFILE):
+    lexicons_list=build_lexicons(filenames)
+    new_lexicon=join_lexicons(*lexicons_list)
+    collapse_dat_goa(new_lexicon)
+    write_lexicon(new_lexicon,outfile=outfile)
 		
+
 if __name__ == "__main__":
-    if len(sys.argv) == 2:
-        main(sys.argv[1])
+    if len(sys.argv) > 1:
+        main(sys.argv[1:])
     else:
         main()
