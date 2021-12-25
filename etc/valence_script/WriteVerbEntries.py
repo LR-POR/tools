@@ -60,15 +60,8 @@ def build_lexicon(mapping=MAPPING,dative=True):
         framelist=ValenceExtractor.expand_valence(frame,dative)
         verbs=ValenceExtractor.extract_verbs(framelist)
         for verb in verbs:
-            #entry=build_entry(verb,MAPPING[frame])
-            #if entry:
-                #print(entry)
             expand_lexicon(verb,mapping[frame],new_lexicon)
     return new_lexicon
-    #outfile=open(f"/home/leonel/hpsg/por/bosque-entries.tdl","w")
-    #for num,lemma,types in sortedentries:
-     #   print(num,lemma," ".join(types),file=outfile)
-    #outfile.close()
 
 def join_lexicons(*lexicons):
     old_lexicon=lexicons[0]
