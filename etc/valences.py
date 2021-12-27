@@ -413,7 +413,16 @@ def main():
         print(f'Done {100*i/len(d.keys()):.2f}',end='\r')
     joblib.dump(g,'valences_dict.joblib')
     print('Done second part...')
-    
+
+
+def extract_example(valences, valence_category,lemma):
+    examples=[]
+    for verb in valences[valence_category]:
+        if verb.lemma == lemma:
+            for valence in verb.valences:
+                if valence.valence_category == valence_category:
+                    examples.append(valence.example)
+    return examples
     
 def extract_valences(file_path):
     verbs = {}
