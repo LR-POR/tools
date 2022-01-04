@@ -16,6 +16,21 @@ VALENCES = joblib.load(PATH_TO_DICTIONARY)
 FRAMES=list(VALENCES.keys())
 MAPPING=from_frames_to_types()
 
+def compute_stats(frames=FRAMES):
+    frame_lens=[(frame,len(frame.split(","))) for frame in frames]
+    max_len=max(flen for f,flen in frame_lens)
+    dic={}
+    for n in range(1,max_len+1):
+        for f,flen in frame_lens:
+            if flen == n:
+                if dic.get(flen):
+                    dic[n]+=1
+                else:
+                    dic[n]=1
+    for k,v in dic.items():
+        print(k,v)
+
+		
 def parse_frame(frame):
     match=re.match(r"<(.+)>",frame)
     if match:
