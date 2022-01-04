@@ -1,8 +1,9 @@
 #! /bin/bash
-# my-lexicon.tdl lexicon.tdl
-# Author: Leonel Figueiredo de Alencar Date Dec. 21, 2021
+# ExtractVerbTypes.sh lexicon.tdl my-lexicon.tdl
+# Author: Leonel Figueiredo de Alencar 
+# Date: Dec. 21, 2021
 
-grep -Ehv "^;" "$@"  | awk '$2 ~ /:=/ && $3 ~ /(verb\-lex|aux)/ {print $1, $3}'  | uniq | sort > tmp/verbtypes$$.txt
+grep -Ehv "^;" "$@"  | awk '$2 ~ /:=/ && $3 ~ /(verb\-lex|aux)/ {print $1, $3}'  | sort | uniq | sort > tmp/verbtypes$$.txt
 
 awk '{print $2}' tmp/verbtypes$$.txt | sort | uniq -c | sort -nr > tmp/freqdist$$.txt
 

@@ -2,7 +2,9 @@
 # -*- coding: utf-8 -*-
 # Author: Leonel Figueiredo de Alencar Date Dec. 21, 2021
 
-import sys
+import os,sys
+USER=os.path.expanduser("~")
+PORGRAM=os.path.join(USER,"hpsg/por")
 
 def ExtractEntries(infile):
 	return [entry.strip().split() for entry in open(infile,encoding="utf-8").readlines() if entry.strip() != ""]
@@ -29,6 +31,7 @@ def getMaxLength(dic):
             m=c
     return m
 
+
 def sortEntries(dic):
     sortedentries=[]
     for n in range(1,getMaxLength(dic)+1):
@@ -37,8 +40,24 @@ def sortEntries(dic):
                 sortedentries.append((n,k,dic[k]))
     return sortedentries
 
-def main(infile="/home/leonel/hpsg/por/verb-types.txt"):
-    outfile=open(f"/home/leonel/hpsg/por/tmp/{infile.split('.')[0]}.freqs","w")
+def perc(part,total):
+	return (100/total)*part
+
+def computeStats(dic):
+    m=getMaxLength(dic)
+    entries=sortEntries(dic)
+    lemmas=len(entries)
+    print("types\tlemmas\tperc")
+    for num in range(1,m+1):
+        total=0
+        for entry in entries:
+            if entry[0]==num:
+                total+=1
+        print(f"{num}\t{total}\t{perc(total,lemmas):.2f}")
+    
+def main(infile=os.path.join(USER,PORGRAM,"tmp/verbtypes142256.txt")):
+    path_to_outfile=os.path.join(USER,PORGRAM,"tmp",f"{infile.split('.')[0]}.freqs")
+    outfile=open(path_to_outfile,"w")
     entries=ExtractEntries(infile)
     dic=MakeDictionary(entries)
     sortedentries=sortEntries(dic)

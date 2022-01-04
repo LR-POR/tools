@@ -10,7 +10,7 @@ de Alencar, Leonel Figueiredo; Coutinho, Lucas Ribeiro; da Silva, Wellington Jos
 
 import sys, os, re, pickle
 USER=os.path.expanduser("~")
-sys.path.append(os.path.join(USER, "scripts"))
+#sys.path.append(os.path.join(USER, "scripts"))
 import PorGramEntries, ValenceExtractor
 from valences import *
 DIR1=os.path.join(USER, "hpsg/por")
