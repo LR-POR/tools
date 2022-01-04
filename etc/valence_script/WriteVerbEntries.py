@@ -41,6 +41,12 @@ def load_lexicon(filename,path_to_dir=DIR1):
     outfile.close()
     return lexicon
 
+def from_frames_to_types(filenames=FILENAMES):
+    mapping={}
+    for filename in filenames:
+        mapping.update(build_mapping(f"{filename}.txt"))
+    return mapping
+
 def build_entry_old(lemma,verb_type,dic=LEXICON):
 	verb_types=dic.get(lemma)
 	if verb_types:

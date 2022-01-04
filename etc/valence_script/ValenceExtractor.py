@@ -6,11 +6,15 @@
 import os,sys,re
 import conllu, pickle, numpy
 USER=os.path.expanduser("~")
-sys.path.append(os.path.join(USER, "scripts"))
 from valences import *
-PATH_TO_DICTIONARY=os.path.join(USER,"scripts/valences_dict.joblib")
+from WriteVerbEntries import from_frames_to_types
+INSTALL="tools/etc"
+#sys.path.append(os.path.join(USER, INSTALL))
+FILENAME="bosque-master-20211210.pickle"
+PATH_TO_DICTIONARY=os.path.join(USER,INSTALL,FILENAME)
 VALENCES = joblib.load(PATH_TO_DICTIONARY)
 FRAMES=list(VALENCES.keys())
+MAPPING=from_frames_to_types()
 
 def parse_frame(frame):
     match=re.match(r"<(.+)>",frame)
@@ -35,15 +39,45 @@ def extract_syntactic_functions(syntactic_function,frames):
 def extract_example(valence_category,lemma):
     examples=[]
     #tmp=open('tmp.tmp','w')
-    for verb in VALENCES[valence_category]:
-        if verb.lemma == lemma:
-            for valence in verb.valences:
-                if valence.valence_category == valence_category:
-                    #print(valence.example)
-                    #print(valence.example,file=tmp)
-                    examples.append(valence.example)
+    verbs=VALENCES.get(valence_category)
+    if verbs:
+        for verb in verbs:
+            if verb.lemma == lemma:
+                for valence in verb.valences:
+                    if valence.valence_category == valence_category:
+                        #print(valence.example)
+                        #print(valence.example,file=tmp)
+                        examples.append(valence.example)
     #tmp.close()
     return examples
+
+def get_examples_of_verbtype(verbtype,verb,expand=True,dative=True,mapping=MAPPING):
+    examples=[]
+    for frame,basictype in mapping.items():
+        frames=[]
+        if basictype==verbtype:
+            if expand:
+                frames=expand_valence(frame,dative)
+            else:
+                frames.append(frame)
+            for frame in frames:
+                examples.extend(extract_example(frame,verb))
+    return examples
+
+def pprint_examples(examples):
+    return "\n".join(examples)
+
+def get_shortest_example(examples):
+    shortest=""
+    c=len(examples)
+    if c > 1:
+        shortest=examples[0]
+        for example in examples[1:]:
+            if len(example) < len(shortest):
+                shortest=example
+    elif c == 1:
+        shortest=examples[0]
+    return shortest
 
 def expand_valence(frame,dative=True):
 	frames1=[]
