@@ -1,13 +1,17 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-# Author: Leonel Figueiredo de Alencar 
+# Author: Leonel Figueiredo de Alencar
+# Sample generation of lexical entries from TDL file based on 
+# https://github.com/LR-POR/tools/commit/4f3b38843ed4a2626f3c75d6043542deb3daf74a
 # Date: Dec. 21, 2021
 
 import os,sys,re
 import conllu, pickle, numpy
-USER=os.path.expanduser("~")
+from delphin import tdl
+import random
 from valences import *
 from WriteVerbEntries import from_frames_to_types
+USER=os.path.expanduser("~")
 INSTALL="tools/etc"
 #sys.path.append(os.path.join(USER, INSTALL))
 FILENAME="bosque-master-20211210.pickle"
@@ -15,6 +19,33 @@ PATH_TO_DICTIONARY=os.path.join(USER,INSTALL,FILENAME)
 VALENCES = joblib.load(PATH_TO_DICTIONARY)
 FRAMES=list(VALENCES.keys())
 MAPPING=from_frames_to_types()
+
+def insert_docstring(td):
+    examples=get_examples_of_verbtype(str(td.supertypes[0]),str(td.features()[0][1].values()[0]))
+    td.docstring=get_shortest_example(examples)
+	
+def insert_examples(infile,outfile,sample=0):
+    """This function makes a new version of a TDL file with lexical entries automatically created from UD_Portuguese-Bosque, inserting as a docstring the corresponding shortest example in the treebank. If the sample parameter is greater than 0, a random sample with the given number of entries is created.    
+    """
+    outfile=open(outfile,'w')
+    lex={}
+    newlex={}
+    for event, td, lineno in tdl.iterparse(infile):
+        if event == 'TypeDefinition':
+            lex[td.identifier] = td
+    if sample:
+        for ident in random.sample(lex.keys(), sample):
+            td =lex[ident]
+            insert_docstring(td)
+            newlex[ident]=td
+            print(tdl.format(td),"\n",file=outfile)
+    else:
+        for ident,td in lex.items():
+            insert_docstring(td)
+            print(tdl.format(td),"\n",file=outfile)
+
+    outfile.close()
+            
 
 def compute_stats(frames=FRAMES):
     frame_lens=[(frame,len(frame.split(","))) for frame in frames]
