@@ -23,16 +23,23 @@ MAPPING=from_frames_to_types()
 def insert_docstring(td):
     examples=get_examples_of_verbtype(str(td.supertypes[0]),str(td.features()[0][1].values()[0]))
     td.docstring=get_shortest_example(examples)
-	
+    
+def parse_tdl(infile):
+    lexicon={}
+    for event, td, lineno in tdl.iterparse(infile):
+        if event == 'TypeDefinition':
+            lexicon[td.identifier] = td
+    return lexicon
+        
 def insert_examples(infile,outfile,sample=0):
     """This function makes a new version of a TDL file with lexical entries automatically created from UD_Portuguese-Bosque, inserting as a docstring the corresponding shortest example in the treebank. If the sample parameter is greater than 0, a random sample with the given number of entries is created.    
     """
     outfile=open(outfile,'w')
-    lex={}
+    lex=parse_tdl(infile)
     newlex={}
-    for event, td, lineno in tdl.iterparse(infile):
-        if event == 'TypeDefinition':
-            lex[td.identifier] = td
+    #for event, td, lineno in tdl.iterparse(infile):
+    #   if event == 'TypeDefinition':
+    #      lex[td.identifier] = td
     if sample:
         for ident in random.sample(lex.keys(), sample):
             td =lex[ident]
@@ -106,7 +113,13 @@ def get_examples_of_verbtype(verbtype,verb,expand=True,dative=True,mapping=MAPPI
                 frames=expand_valence(frame,dative)
             else:
                 frames.append(frame)
-            for frame in frames:
+        elif "-rec-" in verbtype:
+            if expand:
+                frames=expand_valence('<VERB:act,nsubj,iobj:a,obj>',dative)
+                frames.extend(expand_valence('<VERB:act,nsubj,iobj:para,obj>',dative))
+            else:
+                frames.extend(['<VERB:act,nsubj,iobj:a,obj>','<VERB:act,nsubj,iobj:para,obj>'])
+        for frame in frames:
                 examples.extend(extract_example(frame,verb))
     return examples
 

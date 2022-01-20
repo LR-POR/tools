@@ -5,13 +5,14 @@
 
 """This module extracts verbs from the UD Bosque treebank and constructs the corresponding lexical entries in TDL according to the given tables mapping UD valence frames to PorGram types.
 
-de Alencar, Leonel Figueiredo; Coutinho, Lucas Ribeiro; da Silva, Wellington José Leite; Nunes, Ana Luiza; Rademaker, Alexandre. Extracting valences from a dependency treebank for populating the verb lexicon of a Portuguese HPSG grammar. Proceedings of the 15th International Conference on Computational Processing of Portuguese (PROPOR 2022). Berlin: Springer, 2022. In preparation.
+de Alencar, Leonel Figueiredo; Coutinho, Lucas Ribeiro; da Silva, Wellington José Leite; Nunes, Ana Luiza; Rademaker, Alexandre. Extracting valences from a dependency treebank for populating the verb lexicon of a Portuguese HPSG grammar. Proceedings of the 15th International Conference on Computational Processing of Portuguese (PROPOR 2022), March 21st to March 23rd, Fortaleza, Brazil. Berlin: Springer, 2022. Forthcoming.
 """
 
 import sys, os, re, pickle
 USER=os.path.expanduser("~")
 #sys.path.append(os.path.join(USER, "scripts"))
 import PorGramEntries, ValenceExtractor
+from delphin import tdl
 from valences import *
 DIR1=os.path.join(USER, "hpsg/por")
 DIR2=os.path.join(USER, "hpsg/por/tmp")
@@ -19,6 +20,7 @@ DIR2=os.path.join(USER, "hpsg/por/tmp")
 FILENAMES=['prep-obj-2ng-arg-verbs','clausal-verbs', 'intrans-trans', 'ditrans']
 # destination file of the created entries
 OUTFILE="bosque-entries.tdl"
+SCRIPTFILE=os.path.join(USER, DIR1,'lkb/my-script')
 
 def build_mapping(filename):
     return dict([re.split(r"\s+",line.strip()) for line in open(os.path.join(USER,DIR1,filename),"r").readlines() if line.strip() != ""])
@@ -29,6 +31,27 @@ def build_mapping(filename):
 INFILE=os.path.join(USER, DIR2,"verbtypes142256.txt")
 
 LEXICON=PorGramEntries.MakeDictionary(PorGramEntries.ExtractEntries(INFILE))
+
+def extract_filenames(lkb_script=SCRIPTFILE):
+    """This function extracts the names of the lexicon files in a LKB load script.
+"""
+    s=open(lkb_script,'r').read()
+    regex=re.compile(r"@start.*@end",re.DOTALL)
+    t=r[0]
+    regex2=re.compile(r"[-a-z0-9]+\.tdl",re.DOTALL)
+    return regex2.findall(t)
+
+def convert_lexicon(lexicon):
+    new_lexicon={}
+    for ident,td in lexicon.items():
+        verbtype=str(td.supertypes[0])
+        lemma=str(td.features()[0][1].values()[0])
+        verbtype_set=new_lexicon.get(lemma)
+        if verbtype_set:
+            new_lexicon[lemma].add(verbtype)
+        else:
+            new_lexicon[lemma]={verbtype}
+    return new_lexicon
 
 def save_lexicon(lexicon,filename,path_to_dir=DIR1):
     outfile = open(os.path.join(path_to_dir,filename),'wb')
@@ -46,19 +69,6 @@ def from_frames_to_types(filenames=FILENAMES):
     for filename in filenames:
         mapping.update(build_mapping(f"{filename}.txt"))
     return mapping
-
-def build_entry_old(lemma,verb_type,dic=LEXICON):
-	verb_types=dic.get(lemma)
-	if verb_types:
-		if verb_type not in verb_types:
-			ind=len(verb_types)+1
-		else:
-			return None
-	else:
-		ind=1
-	return f"""{lemma}_{ind} := {verb_type} &
-  [ STEM < "{lemma}" >,
-    SYNSEM.LKEYS.KEYREL.PRED "_{lemma}_v_{ind}_rel" ].\n"""
  
 def build_entry(lemma,verb_type,index):
     return f"""{lemma}_{index} := {verb_type} &
@@ -82,12 +92,11 @@ def build_lexicon(mapping,dative=True):
     return new_lexicon
 
 def join_lexicons(*lexicons):
-    old_lexicon=lexicons[0]
-    new_lexicons=lexicons[1:]
+    first_lexicon=lexicons[0]
+    other_lexicons=lexicons[1:]
     updated_lexicon={}
-    updated_lexicon.update(old_lexicon)
-    #return new_lexicons
-    for lexicon in new_lexicons:
+    updated_lexicon.update(first_lexicon)
+    for lexicon in other_lexicons:
         for k,v in lexicon.items():
             if updated_lexicon.get(k):
                 updated_lexicon[k].update(v)
