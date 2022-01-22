@@ -124,7 +124,7 @@ def get_examples_of_verbtype(verbtype,verb,expand=True,dative=True,mapping=MAPPI
     return examples
 
 def pprint_examples(examples):
-    return "\n".join(examples)
+    print("\n".join(examples))
 
 def get_shortest_example(examples):
     shortest=""
@@ -164,13 +164,23 @@ def extract_verbs(frames):
 	return itens
 
 
-def extract_prepositions(frames=FRAMES,pat=r"VERB:act,(nsubj,)?expl,obj:([a-z]+)"):
-	preps=set()
-	for f in frames:
-		s=re.search(pat,f)
-		if s:
-			preps.add(s.groups()[1])
-	return preps
+def extract_prepositions(pat=r"(,)(i?obj:)(\w+)([,>])",frames=FRAMES):
+    """Returns the set of prepositions from a list of valence frames. 
+
+    Parameters:
+    argument1 (str): Regular expression pattern for matching prepositions.
+    argument1 (list): List of valence frames.
+
+    Returns:
+    set: A set of strings representing the prepositions in the list frames.
+   """
+    frames_with_preps=[]
+    preps=set()
+    for frame in frames_with_preps:
+        s=re.search(pat,frame)
+        if s:
+            preps.add(s.groups()[2])
+    return preps
 
 
 def extract_frames():
