@@ -5,7 +5,7 @@
 
 """This module extracts verbs from the UD Bosque treebank and constructs the corresponding lexical entries in TDL according to the given tables mapping UD valence frames to PorGram types.
 
-de Alencar, Leonel Figueiredo; Coutinho, Lucas Ribeiro; da Silva, Wellington José Leite; Nunes, Ana Luiza; Rademaker, Alexandre. Extracting valences from a dependency treebank for populating the verb lexicon of a Portuguese HPSG grammar. Proceedings of the 15th International Conference on Computational Processing of Portuguese (PROPOR 2022), March 21st to March 23rd, Fortaleza, Brazil. Berlin: Springer, 2022. Forthcoming.
+de Alencar, Leonel Figueiredo; Coutinho, Lucas Ribeiro; da Silva, Wellington José Leite; Nunes, Ana Luiza; Rademaker, Alexandre. Extracting valences from a dependency treebank for populating the verb lexicon of a Portuguese HPSG grammar. Proceedings of the 15th International Conference on Computational Processing of Portuguese (PROPOR 2022), March 21st to March 23rd, Fortaleza, Brazil. Cham, Switzerland: Springer, 2022. Forthcoming.
 """
 
 import sys, os, re, pickle

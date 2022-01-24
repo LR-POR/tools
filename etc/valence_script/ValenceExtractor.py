@@ -174,7 +174,7 @@ def extract_prepositions(pat=r"(,)(i?obj:)(\w+)([,>])",frames=FRAMES):
     Returns:
     set: A set of strings representing the prepositions in the list frames.
    """
-    frames_with_preps=[]
+    frames_with_preps=[frame for frame in frames if "obj:" in frame]
     preps=set()
     for frame in frames_with_preps:
         s=re.search(pat,frame)
