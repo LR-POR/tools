@@ -186,15 +186,17 @@ def extract_prepositions(pat=r"(,)(i?obj:)(\w+)([,>])",frames=FRAMES):
 def extract_frames():
     return list(VALENCES.keys())
 
-def extract_examples_of_frames(frames=FRAMES,pattern=r"ccomp:(a|com|para)\+(Ind|Sub)"):
+def extract_examples_of_frames(pattern=r"ccomp:(a|com|para)\+(Ind|Sub)",outfile=sys.stdout,frames=FRAMES):
     for frame in frames:
         if re.search(pattern,frame):
             verbs=extract_verbs([frame])
             lemmas=[verb.lemma for verb in verbs]
-            print(f"{frame}\t({', '.join(lemmas)})")
+            print(f"{frame}\t({', '.join(lemmas)})",file=outfile)
             for lemma in lemmas:
-                print(lemma,": ","\n".join(extract_example(frame,lemma)),sep= " ")
-            print()
+                print(lemma,": ","\n".join(extract_example(frame,lemma)),sep= " ",file=outfile)
+            print("\n",file=outfile)
+    if outfile != sys.stdout:
+        outfile.close()
 
 
 """def main():

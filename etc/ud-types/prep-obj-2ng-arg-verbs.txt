@@ -1,7 +1,7 @@
 <VERB:act,nsubj,obj:de>  nonrefl-gen-obj-verb-lex
 <VERB:act,nsubj,obj:a>  nonrefl-dat-obj-verb-lex
 <VERB:act,nsubj,obj:para>  nonrefl-goa-obj-verb-lex
-<VERB:act,nsubj,obj:sobre>  nonrefl-all-obj-verb-lex
+<VERB:act,nsubj,obj:sobre>  nonrefl-sup-obj-verb-lex
 <VERB:act,nsubj,obj:por>  nonrefl-per-obj-verb-lex
 <VERB:act,nsubj,obj:com>  nonrefl-com-obj-verb-lex
 <VERB:act,nsubj,obj:em>  nonrefl-ine-obj-verb-lex
@@ -10,5 +10,5 @@
 <VERB:act,nsubj,expl,obj:para>  refl-goa-obj-verb-lex
 <VERB:act,nsubj,expl,obj:com>  refl-com-obj-verb-lex
 <VERB:act,nsubj,expl,obj:em>  refl-ine-obj-verb-lex
-<VERB:act,nsubj,expl,obj:sobre>  refl-all-obj-verb-lex
+<VERB:act,nsubj,expl,obj:sobre>  refl-sup-obj-verb-lex
 <VERB:act,nsubj,expl,obj:por>  refl-per-obj-verb-lex
