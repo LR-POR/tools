@@ -1,0 +1,20 @@
+<VERB:act,nsubj,iobj:com,obj> nom-acc-com-ditransitive-verb-lex
+<VERB:act,nsubj,iobj:por,obj> nom-acc-per-ditransitive-verb-lex
+<VERB:act,nsubj,iobj:em,obj> nom-acc-ine-ditransitive-verb-lex
+<VERB:act,nsubj,iobj:sobre,obj> nom-acc-sup-ditransitive-verb-lex
+<VERB:act,nsubj,iobj:de,obj> nom-acc-gen-ditransitive-verb-lex
+
+#<VERB:act,nsubj,iobj:a,obj:de>  ?nom-gen-dat-ditransitive-verb-lex # ERROR:obj instead of obj:de (error of valence extractor)
+<VERB:act,nsubj,iobj:com,obj:de>    ?nom-gen-com-ditransitive-verb-lex # ERROR:com-PP is obl
+<VERB:act,nsubj,iobj:contra,obj>    ?nom-acc-opp-ditransitive-verb-lex # ERROR:contra-PP is obl
+<VERB:act,nsubj,iobj:de,obj:a> ?nom-dat-gen-ditransitive-verb-lex # ERROR:prepositional direct object
+#*<VERB:act,nsubj,iobj:desde,obj:com>
+<VERB:act,nsubj,iobj:em,obj:de> ?nom-gen-ine-ditransitive-verb-lex # ERROR:em-PP is obl
+<VERB:act,nsubj,iobj:em,obj:em> ?nom-ine-ine-ditransitive-verb-lex # ERROR:divalent variant of "participar", one of the em-PPs is an obl (BOR)
+ <VERB:act,nsubj,iobj,obj:com> ?nom-com-dat-ditransitive-verb-lex # ERROR:em-PP in the example with "atirar" is a complement
+<VERB:act,nsubj,iobj,obj:de>    nom-gen-dat-ditransitive-verb-lex
+<VERB:act,nsubj,iobj:para,obj:de>   nom-gen-goa-ditransitive-verb-lex
+<VERB:act,nsubj,iobj:por,obj>   nom-acc-per-ditransitive-verb-lex
+<VERB:act,nsubj,iobj:sobre,obj> nom-acc-sup-ditransitive-verb-lex
+
+

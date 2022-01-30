@@ -20,8 +20,8 @@ VALENCES = joblib.load(PATH_TO_DICTIONARY)
 FRAMES=list(VALENCES.keys())
 MAPPING=from_frames_to_types()
 
-def insert_docstring(td):
-    examples=get_examples_of_verbtype(str(td.supertypes[0]),str(td.features()[0][1].values()[0]))
+def insert_docstring(td,mapping):
+    examples=get_examples_of_verbtype(str(td.supertypes[0]),str(td.features()[0][1].values()[0]), mapping=mapping)
     td.docstring=get_shortest_example(examples)
     
 def parse_tdl(infile):
@@ -30,25 +30,40 @@ def parse_tdl(infile):
         if event == 'TypeDefinition':
             lexicon[td.identifier] = td
     return lexicon
+
+def format_lexicon(lexicon,outfile):
+    """Formats and writes lexical entries to a file. 
+
+    Parameters:
+    argument1 (dict): Dictionary mapping lexicon identifiers (strings) to TypeDefinition objects.
+    argument2 (str): Name of output file.
+
+    Returns:
+    set: A set of strings representing the prepositions in the list frames.
+    """
+    outfile=open(outfile,'w')
+    for lexid,td in lexicon.items():
+        print(tdl.format(td),"\n",file=outfile)
+    outfile.close()
         
-def insert_examples(infile,outfile,sample=0):
+def insert_examples(infile,outfile,sample=0,mapping=MAPPING):
     """This function makes a new version of a TDL file with lexical entries automatically created from UD_Portuguese-Bosque, inserting as a docstring the corresponding shortest example in the treebank. If the sample parameter is greater than 0, a random sample with the given number of entries is created.    
     """
     outfile=open(outfile,'w')
     lex=parse_tdl(infile)
-    newlex={}
+    #newlex={}
     #for event, td, lineno in tdl.iterparse(infile):
     #   if event == 'TypeDefinition':
     #      lex[td.identifier] = td
     if sample:
         for ident in random.sample(lex.keys(), sample):
             td =lex[ident]
-            insert_docstring(td)
-            newlex[ident]=td
+            insert_docstring(td,mapping)
+            #newlex[ident]=td
             print(tdl.format(td),"\n",file=outfile)
     else:
         for ident,td in lex.items():
-            insert_docstring(td)
+            insert_docstring(td,mapping)
             print(tdl.format(td),"\n",file=outfile)
 
     outfile.close()

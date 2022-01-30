@@ -30,16 +30,17 @@ def build_mapping(filename):
 # table mapping lexical identifiers to types in the existing TDL lexicon files 
 INFILE=os.path.join(USER, DIR2,"verbtypes142256.txt")
 
-LEXICON=PorGramEntries.MakeDictionary(PorGramEntries.ExtractEntries(INFILE))
+def build_old_lexicon(lkb_script=SCRIPTFILE):
+    filenames=extract_filenames(lkb_script)
+    return extract_lexicons(filenames)
 
 def extract_filenames(lkb_script=SCRIPTFILE):
     """This function extracts the names of the lexicon files in a LKB load script.
 """
     s=open(lkb_script,'r').read()
-    regex=re.compile(r"@start.*@end",re.DOTALL)
-    t=r[0]
+    regex1=re.compile(r"@start.*@end",re.DOTALL)
     regex2=re.compile(r"[-a-z0-9]+\.tdl",re.DOTALL)
-    return regex2.findall(t)
+    return regex2.findall(regex1.findall(s)[0])
 
 def convert_lexicon(lexicon):
     new_lexicon={}
@@ -70,10 +71,10 @@ def from_frames_to_types(filenames=FILENAMES):
         mapping.update(build_mapping(f"{filename}.txt"))
     return mapping
  
-def build_entry(lemma,verb_type,index):
-    return f"""{lemma}_{index} := {verb_type} &
+def build_entry(lemma,verb_type,index,pos="v"):
+    return f"""{lemma}_{pos}{index} := {verb_type} &
   [ STEM < "{lemma}" >,
-    SYNSEM.LKEYS.KEYREL.PRED "_{lemma}_v_{index}_rel" ].\n"""
+    SYNSEM.LKEYS.KEYREL.PRED "_{lemma}_{pos}_{index}_rel" ].\n"""
   
 def expand_lexicon(verb,verb_type,new_lexicon):
     if not new_lexicon.get(verb.lemma):
@@ -111,7 +112,7 @@ def collapse_dat_goa(lexicon):
             verbtypes.difference_update(dat_goa)
             verbtypes.add('nom-acc-rec-ditransitive-verb-lex')
 			
-def write_lexicon(new_lexicon,path_to_dir=DIR1, outfile=OUTFILE,old_lexicon=LEXICON):
+def write_lexicon(new_lexicon,path_to_dir=DIR1, outfile=OUTFILE,old_lexicon=None,pos="v"):
     outfile=os.path.join(path_to_dir,outfile)
     outfile=open(outfile,"w")
     lemmas=list(new_lexicon.keys())
@@ -123,11 +124,11 @@ def write_lexicon(new_lexicon,path_to_dir=DIR1, outfile=OUTFILE,old_lexicon=LEXI
             index=len(old_verbtypes)+1
             for verbtype in new_verbtypes:
                 if verbtype not in old_verbtypes:
-                    print(build_entry(lemma,verbtype,index),file=outfile)
+                    print(build_entry(lemma,verbtype,index,pos),file=outfile)
                     index+=1
         else:
             for verbtype in new_verbtypes:
-                print(build_entry(lemma,verbtype,index),file=outfile)
+                print(build_entry(lemma,verbtype,index,pos),file=outfile)
                 index+=1
     outfile.close()
  
@@ -135,22 +136,42 @@ def build_lexicons(filenames=FILENAMES):
     new_lexicons=[]
     for filename in filenames:
         infile=f"{filename}.txt"
-        outfile=f"{filename}.pkl"
+        #outfile=f"{filename}.pkl"
         mapping=build_mapping(infile)
         new_lexicon=build_lexicon(mapping)
         #save_lexicon(new_lexicon,outfile)
         new_lexicons.append(new_lexicon)
     return new_lexicons
+
+def extract_lexicons(filenames):
+    """Returns the entries of multiples TDL lexicon files in form of a dictionary. 
+
+    Parameters:
+    argument1 (list): List of strings representing the name of TDL lexicon files.
+
+    Returns:
+    dict: A dictionary mapping each lemma (str) in the lexicon files to its set of types (str).
+    """
+    lexicons=[]
+    for filename in filenames:
+        lexicons.append(convert_lexicon(ValenceExtractor.parse_tdl(filename)))
+    return join_lexicons(*lexicons)
         
-def main(filenames=FILENAMES,outfile=OUTFILE):
+def main(old_lexicon, outfile=OUTFILE, pos="v", filenames=FILENAMES):
     lexicons_list=build_lexicons(filenames)
     new_lexicon=join_lexicons(*lexicons_list)
     collapse_dat_goa(new_lexicon)
-    write_lexicon(new_lexicon,outfile=outfile)
+    write_lexicon(new_lexicon,outfile=outfile,old_lexicon=old_lexicon,pos=pos)
 		
 
 if __name__ == "__main__":
     if len(sys.argv) > 1:
-        main(sys.argv[1:])
+        if sys.argv[1].endswith(".pkl"):
+            old_lexicon=load_lexicon(sys.argv[1])
+            main(old_lexicon,outfile=sys.argv[2], pos=sys.argv[3], filenames=sys.argv[4:])
+        else:
+            old_lexicon=build_old_lexicon()
+            main(old_lexicon,outfile=sys.argv[1], pos=sys.argv[2], filenames=sys.argv[3:])
     else:
-        main()
+        from PorGramEntries import MakeDictionary, ExtractEntries
+        main(old_lexicon=MakeDictionary(ExtractEntries(INFILE)))

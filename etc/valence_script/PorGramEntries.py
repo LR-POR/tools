@@ -7,17 +7,34 @@ USER=os.path.expanduser("~")
 PORGRAM=os.path.join(USER,"hpsg/por")
 
 def ExtractEntries(infile):
-	return [entry.strip().split() for entry in open(infile,encoding="utf-8").readlines() if entry.strip() != ""]
+    """Converts a two-column table to a list. 
+
+    Parameters:
+    argument1 (str): Name of input file with a two-column table in raw text 
+    format mapping lexical identifiers (str) to types (str).
+
+    Returns:
+    list: A list of lists with two elements, a lexical identifier (str) and a type (str).
+    """
+    return [entry.strip().split() for entry in open(infile,encoding="utf-8").readlines() if entry.strip() != ""]
 
 def MakeDictionary(entries):
-	dic={}
-	for ident,lextype in entries:
-		lemma=ident.split("_")[0]
-		if dic.get(lemma):
-			dic[lemma].append(lextype)
-		else:
-			dic[lemma]=[lextype]
-	return dic
+    """Returns a dictionary mapping lemmas to types. 
+
+    Parameters:
+    argument1 (str): A list of lists with two elements, a lexical identifier (str) and a type (str).
+
+    Returns:
+    dict: A dictionary mapping each lemma (str) to its list of types (str).
+    """
+    dic={}
+    for ident,lextype in entries:
+        lemma=ident.split("_")[0]
+        if dic.get(lemma):
+            dic[lemma].append(lextype)
+        else:
+            dic[lemma]=[lextype]
+    return dic
     
 
 def getMaxLength(dic):

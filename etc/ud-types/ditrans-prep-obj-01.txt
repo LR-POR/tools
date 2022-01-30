@@ -1,0 +1,8 @@
+<VERB:act,nsubj,iobj:com,obj> nom-acc-com-ditransitive-verb-lex
+<VERB:act,nsubj,iobj:por,obj> nom-acc-per-ditransitive-verb-lex
+<VERB:act,nsubj,iobj:em,obj> nom-acc-ine-ditransitive-verb-lex
+<VERB:act,nsubj,iobj:sobre,obj> nom-acc-sup-ditransitive-verb-lex
+<VERB:act,nsubj,iobj:de,obj> nom-acc-gen-ditransitive-verb-lex
+<VERB:act,nsubj,iobj,obj:de>    nom-gen-dat-ditransitive-verb-lex
+<VERB:act,nsubj,iobj:para,obj:de>   nom-gen-goa-ditransitive-verb-lex
+
