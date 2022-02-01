@@ -1,12 +1,19 @@
 from conllu import parse
 import joblib
+import re
 
+DEPRELS = ['nsubj', 'obj', 'iobj', 'xcomp', 'ccomp', 'csubj', 'expl', 'nsubj:pass', 'aux:pass']
 
-DEPRELS = ['nsubj','obj','iobj','xcomp','ccomp','csubj','expl','nsubj:pass','aux:pass']
 
 ## Funçoes auxiliares
 
-def binary_search(x,l):
+def c_exec(code):
+    exec(f'global i; i = {code}')
+    global i
+    return i
+
+
+def binary_search(x, l):
     """ Esse algorítmo é o algorítmo de busca binária, mas ele retorna
     qual o índice o qual devo colocar o elemento para que a lista
     permaneça ordenada.
@@ -14,46 +21,104 @@ def binary_search(x,l):
     Input: elemento x e lista l
     Output: Índice em que o elemento deve ser inserido para manter a ordenação da lista
     """
-    lo = 0 # Cota inferior inicial (Lower bound)
-    up = len(l) # Cota superior inicial (Upper bound)
+    lo = 0  # Cota inferior inicial (Lower bound)
+    up = len(l)  # Cota superior inicial (Upper bound)
     while lo < up:
-        mid = int((lo+up)/2) #Ponto Médio 
+        mid = int((lo + up) / 2)  # Ponto Médio
         if l[mid] < x:
             lo = mid + 1
         else:
             up = mid
     return up
 
-def convert_token_to_relation(sentence,token):
+
+def get_srl_dic(sentence):
+    return [c_exec(d) for d in re.compile(r'\{.+?\}').findall(sentence.metadata['srl'])]
+
+
+def convert_token_to_relation(sentence, token,srl=False):
     """ Converte um objeto do tipo token da biblioteca conllu em um objeto
     do tipo Relation criado aqui
     """
-    return Relation(sentence,token)
+    return Relation(sentence, token,srl)
+
+def get_token_by_index(sentence,index):
+    return [x for x in sentence if x['id'] == index][0]
+
+
+def convert_srl_dic_to_tokens(sentence, dic):
+    new_dic = {}
+    for key, values in dic.items():
+        if key == 'args':
+            new_dic[key] = []
+            for args in values:
+                new_dic[key].append([args[0], [convert_token_to_relation(sentence, get_token_by_index(sentence, x),srl=True) for x in args[1]]])
+        if key == 'roleset':
+            new_dic[key] = values
+        if key == 'target':
+            new_dic[key] = []
+            for id in values:
+                new_dic[key].append(convert_token_to_relation(sentence, get_token_by_index(sentence, id)))
+    return new_dic
+
+
+def get_srl_verb(sentence, verb_token):
+    srls = [convert_srl_dic_to_tokens(sentence, c_exec(d))
+            for d in re.compile(r'\{.+?\}').findall(sentence.metadata['srl'])]
+    #return srls
+    ret = [x for x in srls if verb_token['lemma'] in [y.lemma for y in x['target']]]
+    return ret
+
+def get_argst_from_srl(rets):
+    o = []
+    for ret in rets:
+        dic = {}
+        dic['Rel'] = ret['target'][0].lemma
+        for x in ret['args']:
+            if x[0][-1] in [str(i) for i in range(11)]:
+                string = ''
+                relation = x[1][0]
+                if relation.deprel in {'csubj', 'nsubj', 'obj', 'iobj', 'xcomp', 'ccomp', 'expl'}:
+                    string += relation.deprel
+                    if len(relation.relation) > 0 and relation.deprel in {'iobj','obj'}:
+                        string += f':{relation.relation[0].lemma}'
+                dic[x[0]] = string
+        return dic
+
+
+
+
+
 
 
 class Relation:
     """ Objeto do tipo relation, tem basicamente as informações do token e
     também de seus filhos que nos interessam (case e mark)
     """
-    def __init__(self,sentence,token):
+
+    def __init__(self, sentence, token,srl=False):
         self.token = token['form']
         self.lemma = token['lemma']
         self.deprel = token['deprel']
         self.upos = token['upos']
-        self.feats=token['feats']
+        self.feats = token['feats']
         self.relation = []
-        son_tokens = get_son_tokens(sentence,token)
+        # if token['upos'] in ['VERB', 'AUX'] and srl:
+        #     self.srl = get_srl_verb(sentence, token)
+        # else:
+        #     self.srl = None
+        son_tokens = get_son_tokens(sentence, token)
         if son_tokens != []:
             for son_token in son_tokens:
-                if son_token['deprel'] in ('case','mark'):
-                    self.relation.append(convert_token_to_relation(sentence,son_token))
-  
-        
+                if son_token['deprel'] in ('case', 'mark'):
+                    self.relation.append(convert_token_to_relation(sentence, son_token))
+
     def __str__(self):
         return f'[{str(self.lemma)},{str(self.deprel)},{str(self.upos)}]'
+
     def __repr__(self):
         return f'[{str(self.lemma)},{str(self.deprel)},{str(self.upos)}]'
-    
+
 
 class Valence:
     """ Objeto do tipo valencia, que guarda as infos específicas de um
@@ -61,10 +126,11 @@ class Valence:
     ccomp, obj etc. caso haja.  Possui um método print para imprimir
     as informaçoes da valência do verbo.
     """
+
     def __init__(self,
                  token,
                  lemma=None,
-                 feats=None, 
+                 feats=None,
                  xcomp=None,
                  ccomp=None,
                  obj=None,
@@ -73,10 +139,11 @@ class Valence:
                  nsubj=None,
                  csubj=None,
                  nsubj_pass=None,
-                 aux_pass = None,
+                 aux_pass=None,
                  example=None,
+                 argst = None,
                  rel_set = None):
-        
+
         self.token = token
         self.lemma = lemma
         self.feats = feats
@@ -90,6 +157,7 @@ class Valence:
         self.nsubj_pass = nsubj_pass
         self.aux_pass = aux_pass
         self.example = example
+        self.argst = argst
         self.rel_set = []
         rel_string = ''
         if self.obj is not None:
@@ -115,7 +183,7 @@ class Valence:
                     for relation in rel.relation:
                         if relation.upos == 'ADP':
                             iobj_complement += f':{relation.lemma}'
-            iobj += iobj_complement            
+            iobj += iobj_complement
             self.rel_set.append(iobj)
         if self.ccomp is not None:
             ccomp = 'ccomp'
@@ -123,7 +191,7 @@ class Valence:
             if len(self.ccomp.keys()) > 0:
                 val = list(self.ccomp.keys())[0]
                 rel = self.ccomp[val]
-                rel.relation.sort(key = lambda x: x.lemma)
+                rel.relation.sort(key=lambda x: x.lemma)
                 for relation in rel.relation:
                     if relation.upos == 'SCONJ':
                         ccomp_complement += f'+{relation.lemma}'
@@ -133,7 +201,7 @@ class Valence:
                         ccomp_complement += f"+{rel.feats['Mood']}"
             if len(ccomp_complement) > 0 and ccomp_complement[0] == '+':
                 ccomp_complement = ':' + ccomp_complement[1:]
-            ccomp+=ccomp_complement
+            ccomp += ccomp_complement
             self.rel_set.append(ccomp)
         if self.xcomp is not None:
             xcomp = 'xcomp'
@@ -141,7 +209,7 @@ class Valence:
             if len(self.xcomp.keys()) > 0:
                 val = list(self.xcomp.keys())[0]
                 rel = self.xcomp[val]
-                rel.relation.sort(key = lambda x: x.lemma)
+                rel.relation.sort(key=lambda x: x.lemma)
                 for relation in rel.relation:
                     if relation.upos == 'SCONJ':
                         xcomp_complement += f'+{relation.lemma}'
@@ -156,46 +224,46 @@ class Valence:
             self.rel_set.append('csubj')
         if self.expl is not None:
             self.rel_set.append('expl')
-            
-        if self.aux_pass is not None or self.nsubj_pass is not None or (self.feats is not None and 'Voice' in self.feats.keys() and self.feats['Voice'] == 'Pass'):
+
+        if self.aux_pass is not None or self.nsubj_pass is not None or (
+                self.feats is not None and 'Voice' in self.feats.keys() and self.feats['Voice'] == 'Pass'):
             verb_state = 'VERB:pass'
         else:
             verb_state = 'VERB:act'
-        
+
         self.rel_set.sort()
         if self.nsubj_pass is not None or self.nsubj is not None:
             self.rel_set = ['nsubj'] + self.rel_set
         self.rel_set = [verb_state] + self.rel_set
-        
+
         s = '<'
         for string in self.rel_set:
-            s+=string+','
+            s += string + ','
         s = s[:-1] + '>'
         self.valence_category = s
-        
-    def __getitem__(self,item):
+
+    def __getitem__(self, item):
         return self.rel_set[item]
-    
-        
+
     def __repr__(self):
         return self.valence_category
-    
+
     def __str__(self):
         return self.valence_category
-    
+
     def print(self):
         verb = f'{self.lemma}'
         mdata = ''
-        for key in ['Mood','Number','Person','Tense','VerbForm']:
+        for key in ['Mood', 'Number', 'Person', 'Tense', 'VerbForm']:
             if key in self.feats:
-                mdata+=f'+{key}:{self.feats[key]}'
+                mdata += f'+{key}:{self.feats[key]}'
         mdata = mdata + " "
-        verb+=mdata
+        verb += mdata
         if self.xcomp is not None:
             val = list(self.xcomp.keys())[0]
             if self.xcomp[val].upos in ('VERB'):
                 xcomp = f"xcomp {val}+{self.xcomp[val].lemma}"
-                for key in ['Mood','Number','Person','Tense','VerbForm']:
+                for key in ['Mood', 'Number', 'Person', 'Tense', 'VerbForm']:
                     if key in self.xcomp[val].feats:
                         xcomp += f'+{key}:{self.xcomp[val].feats[key]}'
                 xcomp += ' '
@@ -204,18 +272,18 @@ class Valence:
 
             else:
                 xcomp = f"xcomp "
-            verb+=xcomp
-        #if self.ccomp is not None:
-            #val = list(self.ccomp.keys())[0]
-            #ccomp = f'ccomp {val}+{self.ccomp[val].deprel}+{self.ccomp[val].upos}+{self.ccomp[val].lemma} '
-        #else:
-            #ccomp = f'ccomp '
-            #verb+=ccomp
+            verb += xcomp
+        # if self.ccomp is not None:
+        # val = list(self.ccomp.keys())[0]
+        # ccomp = f'ccomp {val}+{self.ccomp[val].deprel}+{self.ccomp[val].upos}+{self.ccomp[val].lemma} '
+        # else:
+        # ccomp = f'ccomp '
+        # verb+=ccomp
         if self.ccomp is not None:
             val = list(self.ccomp.keys())[0]
             if self.ccomp[val].upos in ('VERB'):
                 ccomp = f"ccomp {val}+{self.ccomp[val].lemma}"
-                for key in ['Mood','Number','Person','Tense','VerbForm']:
+                for key in ['Mood', 'Number', 'Person', 'Tense', 'VerbForm']:
                     if key in self.ccomp[val].feats:
                         ccomp += f'+{key}:{self.ccomp[val].feats[key]}'
                 ccomp += ' '
@@ -224,7 +292,7 @@ class Valence:
 
             else:
                 ccomp = f"ccomp "
-            verb+=ccomp
+            verb += ccomp
         if self.obj is not None:
             if 'ADP' in self.obj.keys():
                 if self.obj['ADP'].deprel == 'case':
@@ -250,37 +318,37 @@ class Valence:
         if self.aux_pass is not None:
             if 'AUX' in self.aux_pass.keys():
                 aux = f"aux:pass:{self.aux_pass['AUX'].lemma}"
-                for key in ['Mood','Number','Person','Tense','VerbForm']:
+                for key in ['Mood', 'Number', 'Person', 'Tense', 'VerbForm']:
                     if key in self.aux_pass['AUX'].feats:
-                        aux += f"+{key}:{self.aux_pass['AUX'].feats[key]}" 
+                        aux += f"+{key}:{self.aux_pass['AUX'].feats[key]}"
                 aux += ' '
             else:
                 aux += 'aux:pass '
             verb += aux
-                
+
         if self.expl is not None:
             if 'PRON' in self.expl.keys():
                 expl = f"PRON+{self.expl['PRON'].token}+"
-                for key in ['Case','Gender','Number','Person','PronType']:
+                for key in ['Case', 'Gender', 'Number', 'Person', 'PronType']:
                     if key in self.expl['PRON'].feats:
-                        expl+=f"{self.expl['PRON'].feats[key]}+"
+                        expl += f"{self.expl['PRON'].feats[key]}+"
                 expl = expl[:-1]
                 verb += expl
         return verb
-            
+
 
 class Verb:
-    def __init__(self,lemma=None, valences = []):
+    def __init__(self, lemma=None, valences=[]):
         self.lemma = lemma
         self.valences = valences
-        
+
     def __repr__(self):
         return self.lemma
-    
+
     def __str__(self):
         return self.lemma
-    
-    def add_valence(self,valence):
+
+    def add_valence(self, valence):
         if valence.lemma != self.lemma:
             raise TypeError("Not same lemma")
         self.valences.append(valence)
@@ -292,49 +360,53 @@ class Verb:
         print_output = list(set(print_output))
         s = ''
         for t in print_output:
-            s+=t + "\n"
+            s += t + "\n"
         return s
-    #def __repr__(self):
-        #s = f"{lemma}:{self.feats['mood']}+{self.feats['Number']}+{self.feats['Person']}+{self.feats['Tense']}+{self.feats['VerbForm']}\n"
-        #if rels in self.rel.keys():
-            
-        #return None
+    # def __repr__(self):
+    # s = f"{lemma}:{self.feats['mood']}+{self.feats['Number']}+{self.feats['Person']}+{self.feats['Tense']}+{self.feats['VerbForm']}\n"
+    # if rels in self.rel.keys():
 
+    # return None
 
 
 ## FUNÇÕES BÁSICAS
-        
+
 
 def get_root_index(sentence):
     for token in sentence:
         if token['deprel'] == 'root':
             return sentence.index(token)
-        
+
+
 def get_verbs_index(sentence):
-    return [sentence.index(x) for x in sentence if x['upos'] == 'VERB']
-        
-        
+    return [sentence.index(x) for x in sentence if x['upos'] in  ('VERB','AUX')]
+
+
 def get_son_tokens(sentence,
                    token):
     token_id = token['id']
     tokens = [t for t in sentence if t['head'] == token_id]
     return tokens
 
+
 def recover_verbs_valences(sentence,
                            with_lemmas=False):
     verbs = get_verbs_index(sentence)
     if with_lemmas:
-        dic = {sentence[x]['lemma']:[(y['deprel'],y['lemma']) for y in get_son_tokens(sentence,sentence[x]) if y['deprel'] not in DEPRELS] for x in verbs}
+        dic = {sentence[x]['lemma']: [(y['deprel'], y['lemma']) for y in get_son_tokens(sentence, sentence[x]) if
+                                      y['deprel'] not in DEPRELS] for x in verbs}
         return dic
-    dic = {sentence[x]['lemma']:[y['deprel'] for y in get_son_tokens(sentence,sentence[x]) if y['deprel']  in DEPRELS] for x in verbs} 
+    dic = {sentence[x]['lemma']: [y['deprel'] for y in get_son_tokens(sentence, sentence[x]) if y['deprel'] in DEPRELS]
+           for x in verbs}
     return dic
 
-def get_rel_set(sentence,token):
-    tokens = get_son_tokens(sentence,token)
+
+def get_rel_set(sentence, token):
+    tokens = get_son_tokens(sentence, token)
     rel_set = [x['deprel'] for x in tokens if x['deprel'] in DEPRELS and x['deprel'] != []]
     rel_set_aux = [x['id'] for x in tokens if x['deprel'] in DEPRELS and x['deprel'] != []]
     token_id = token['id']
-    i = binary_search(token_id,rel_set_aux)
+    i = binary_search(token_id, rel_set_aux)
     rel_set = rel_set[:i] + ['VERB'] + rel_set[i:]
     return rel_set
 
@@ -342,8 +414,8 @@ def get_rel_set(sentence,token):
 ## FUNÇÕES PARA EXTRAÇÃO
 
 
-def get_deprel(sentence,token,deprel):
-    son_tokens = get_son_tokens(sentence,token)
+def get_deprel(sentence, token, deprel):
+    son_tokens = get_son_tokens(sentence, token)
     son_tokens_deprel = [x['deprel'] for x in son_tokens]
     result_dic = {}
     if deprel not in son_tokens_deprel:
@@ -351,79 +423,97 @@ def get_deprel(sentence,token,deprel):
     else:
         deprels = [x for x in son_tokens if x['deprel'] == deprel]
         for deprel_ in deprels:
-            result_dic[deprel_['upos']] = Relation(sentence,deprel_)
+            result_dic[deprel_['upos']] = Relation(sentence, deprel_)
         return result_dic
-       
 
-def get_valence(sentence,token):
-    obj = get_deprel(sentence,token,'obj')
-    iobj = get_deprel(sentence,token,'iobj')
-    ccomp = get_deprel(sentence,token,'ccomp')
-    xcomp = get_deprel(sentence,token,'xcomp')
-    expl = get_deprel(sentence,token,'expl')
-    nsubj = get_deprel(sentence,token,'nsubj')
-    csubj = get_deprel(sentence,token,'csubj')
-    aux_pass = get_deprel(sentence,token,'aux:pass')
-    nsubj_pass = get_deprel(sentence,token,'nsubj:pass')
+
+def get_valence(sentence, token, has_srl=False):
+    if 'srl' not in sentence.metadata.keys():
+        has_srl = False
+    obj = get_deprel(sentence, token, 'obj')
+    iobj = get_deprel(sentence, token, 'iobj')
+    ccomp = get_deprel(sentence, token, 'ccomp')
+    xcomp = get_deprel(sentence, token, 'xcomp')
+    expl = get_deprel(sentence, token, 'expl')
+    nsubj = get_deprel(sentence, token, 'nsubj')
+    csubj = get_deprel(sentence, token, 'csubj')
+    aux_pass = get_deprel(sentence, token, 'aux:pass')
+    nsubj_pass = get_deprel(sentence, token, 'nsubj:pass')
+    if token['upos'] in ['VERB', 'AUX'] and has_srl:
+        argst = get_argst_from_srl(get_srl_verb(sentence, token))
+    else:
+        argst = None
     if obj is None and iobj is None and ccomp is None and xcomp is None and expl is None:
         return None
-    return Valence(token = token['form'], 
+    return Valence(token=token['form'],
                    lemma=token['lemma'],
-                   feats=token['feats'], 
+                   feats=token['feats'],
                    xcomp=xcomp,
                    ccomp=ccomp,
                    obj=obj,
                    iobj=iobj,
                    expl=expl,
-                   nsubj = nsubj,
+                   nsubj=nsubj,
                    csubj=csubj,
-                   nsubj_pass = nsubj_pass,
-                   aux_pass = aux_pass,
+                   nsubj_pass=nsubj_pass,
+                   aux_pass=aux_pass,
                    example=sentence.metadata['text'],
-                   rel_set = get_rel_set(sentence,token))
-            
-            
+                   rel_set=get_rel_set(sentence, token),
+                   argst=argst)
+
+
 def main():
     verbs = {}
-    with open("pt_bosque-ud-train.conllu") as arq:
+    i = 0
+    with open("../../UD_Portuguese-Bosque/pt_bosque-ud-train.conllu",encoding='utf8') as arq:
         bosque = parse(arq.read())
+        conll = ['../../propbank-pt/documents/' + x for x in os.listdir('../../propbank-pt/documents')]
+        conll = [parse(open(x, encoding='utf8').read()) for x in conll]
+        conll = [(x, x.metadata['sent_id']) for y in conll for x in y]
+        conll_id = [x[1] for x in conll]
     for sentence in bosque:
+        has_srl = False
+        if sentence.metadata['sent_id'] in conll_id:
+            sentence = [x[0] for x in conll if x[1] == sentence.metadata['sent_id']][0]
+            has_srl = True
         for verb_index in get_verbs_index(sentence):
             verb_lemma = sentence[verb_index]['lemma']
             if verb_lemma not in verbs.keys():
-                verbs[verb_lemma] = Verb(lemma=verb_lemma,valences = [])
-            valence = get_valence(sentence,sentence[verb_index])
+                verbs[verb_lemma] = Verb(lemma=verb_lemma, valences=[])
+            valence = get_valence(sentence, sentence[verb_index], has_srl)
             if valence is None:
                 continue
             else:
                 verbs[verb_lemma].add_valence(valence)
-        print(f'Done {(bosque.index(sentence)+1)*100/len(bosque):.3f}',end='\r')
+        i+=1
+        print(f'Done {(i) * 100 / len(bosque):.3f}', end='\r')
     print("Done first part...")
-    joblib.dump(verbs,'verbs_dict.joblib')
+    joblib.dump(verbs, 'verbs_dict.joblib')
     d = verbs
     g = {}
-    i=0
+    i = 0
     for verb in d.keys():
         for valence in d[verb].valences:
             if str(valence) not in g.keys():
                 g[str(valence)] = []
             if d[verb] not in g[str(valence)]:
                 g[str(valence)].append(d[verb])
-        i+=1
-        print(f'Done {100*i/len(d.keys()):.2f}',end='\r')
-    joblib.dump(g,'valences_dict.joblib')
+        i += 1
+        print(f'Done {100 * i / len(d.keys()):.2f}', end='\r')
+    joblib.dump(g, 'valences_dict.joblib')
     print('Done second part...')
 
 
-def extract_example(valences, valence_category,lemma):
-    examples=[]
+def extract_example(valences, valence_category, lemma):
+    examples = []
     for verb in valences[valence_category]:
         if verb.lemma == lemma:
             for valence in verb.valences:
                 if valence.valence_category == valence_category:
                     examples.append(valence.example)
     return examples
-    
+
+
 def extract_valences(file_path):
     verbs = {}
     with open(file_path) as arq:
@@ -432,8 +522,8 @@ def extract_valences(file_path):
         for verb_index in get_verbs_index(sentence):
             verb_lemma = sentence[verb_index]['lemma']
             if verb_lemma not in verbs.keys():
-                verbs[verb_lemma] = Verb(lemma=verb_lemma,valences = [])
-            valence = get_valence(sentence,sentence[verb_index])
+                verbs[verb_lemma] = Verb(lemma=verb_lemma, valences=[])
+            valence = get_valence(sentence, sentence[verb_index])
             if valence is None:
                 continue
             else:
@@ -448,12 +538,34 @@ def extract_valences(file_path):
     return g
 
 
-def dump(d,out):
+def dump(d, out):
     with open(out, 'w') as f:
         for val in d.keys():
             for v in d[val]:
-                print(val,v, file = f)
-            
+                print(val, v, file=f)
+
+
+
+def main2():
+    with open("../../UD_Portuguese-Bosque/pt_bosque-ud-train.conllu",encoding='utf8') as arq:
+        bosque = parse(arq.read())
+        conll = ['../../propbank-pt/documents/' + x for x in os.listdir('../../propbank-pt/documents')]
+        conll = [parse(open(x, encoding='utf8').read()) for x in conll]
+        leave = False
+        for bsentence in bosque:
+            for file in conll:
+                for csentence in file:
+                    if bsentence.metadata['text'] == csentence.metadata['text']:
+                        print("UAI PAI")
+
+
+    print('END')
+
+
+
+
+
 
 if __name__ == "__main__":
+    import os
     main()
